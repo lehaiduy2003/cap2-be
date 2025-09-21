@@ -19,6 +19,11 @@ bin/
 
 uploads
 
+.env*
+
+application-dev.properties
+application-prod.properties
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
