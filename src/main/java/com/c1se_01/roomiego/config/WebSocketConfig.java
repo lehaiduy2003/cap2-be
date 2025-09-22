@@ -12,14 +12,14 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic", "/chatroom","/user"); // FE sẽ subscribe topic
+        config.enableSimpleBroker("/topic", "/chatroom", "/user"); // FE sẽ subscribe topic
         config.setApplicationDestinationPrefixes("/app");
         config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/api/socket").setAllowedOrigins("http://localhost:5173").withSockJS();
+        registry.addEndpoint("/api/socket").setAllowedOrigins("http://localhost:5173", "https://cap2-fe.vercel.app").withSockJS();
         registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
     }
 
