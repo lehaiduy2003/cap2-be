@@ -1,5 +1,7 @@
 package com.c1se_01.roomiego.controller;
 
+import com.c1se_01.roomiego.dto.LocationMarkerRequest;
+import com.c1se_01.roomiego.dto.LocationMarkerResponse;
 import com.c1se_01.roomiego.dto.LocationResponse;
 import com.c1se_01.roomiego.dto.LocationSearchRequest;
 import com.c1se_01.roomiego.service.GoogleMapsService;
@@ -7,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 
 @Slf4j
 @RestController
@@ -35,5 +39,15 @@ public class MapsController {
         }
         
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/markers")
+    public ResponseEntity<LocationMarkerResponse[]> getMarkers(@RequestBody LocationMarkerRequest[] request) {
+        if (request.length == 0) {
+            return ResponseEntity.badRequest().body(new LocationMarkerResponse[0]);
+        }
+
+        LocationMarkerResponse[] responses = googleMapsService.getMarkers(Arrays.stream(request).toList());
+        return ResponseEntity.ok(responses);
     }
 }

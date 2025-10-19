@@ -1,6 +1,9 @@
 package com.c1se_01.roomiego.service;
 
+import com.c1se_01.roomiego.dto.LocationMarkerRequest;
+import com.c1se_01.roomiego.dto.LocationMarkerResponse;
 import com.c1se_01.roomiego.dto.LocationResponse;
+import com.c1se_01.roomiego.repository.MarkerRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,31 @@ public class GoogleMapsService {
     public GoogleMapsService() {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+    }
+
+    public LocationMarkerResponse[] getMarkers(List<LocationMarkerRequest> requests) {
+        List<LocationMarkerResponse> responses = new ArrayList<>();
+
+        for(LocationMarkerRequest request : requests) {
+            try {
+                LocationResponse.LocationData locationData = geocodeAddress(request.getAddress());
+                if (locationData != null) {
+                    LocationMarkerResponse response = new LocationMarkerResponse(
+                        request.getId(),
+                        locationData.getFormattedAddress(),
+                        locationData.getLongitude(),
+                        locationData.getLatitude()
+                    );
+                    responses.add(response);
+                } else {
+                    log.warn("No location data found for address: {}", request.getAddress());
+                }
+            } catch (Exception e) {
+                log.error("Error processing marker request for address {}: {}", request.getAddress(), e.getMessage(), e);
+            }
+        }
+
+        return responses.toArray(new LocationMarkerResponse[0]);
     }
 
     public LocationResponse searchLocation(String address) {

@@ -35,7 +35,7 @@ public class WebSecurityConfig {
         httpSecurity.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/auth/**", "/maps/locations", "/public/**", "/api/markers","/api/roommates/**","/api/rooms","/api/rooms/{id}","/api/roommates/export-to-file", "/ws/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/health").permitAll() // ✅ Cho phép API này truy cập công khai
+                        .requestMatchers("/auth/**", "/maps/**", "/public/**", "/api/markers","/api/roommates/**","/api/rooms","/api/rooms/{id}","/api/roommates/export-to-file", "/ws/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/health").permitAll() // ✅ Cho phép API này truy cập công khai
                         .requestMatchers( "/api/rooms/owner", "/api/rooms/owner/{ownerId}", "/owner/get-all-users").hasAnyAuthority("OWNER","ADMIN")
                         .requestMatchers("/renter/**", "/api/roommates/**").hasAnyAuthority("RENTER")
                         .requestMatchers("/api/rent-requests/**", "/api/contracts/**").hasAnyAuthority("RENTER", "OWNER", "ADMIN") // Specific rule for get-users endpoint
