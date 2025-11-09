@@ -231,9 +231,7 @@ public class GoogleMapsService {
         // Define important place types to search for
         String[] placeTypes = {
             "hospital", "police", "university", "school",
-            "fire_station", "bank",
-            "supermarket", "restaurant", "hotel", "cafe",
-            "park"
+            "fire_station", "bank", "supermarket"
         };
 
         try {

@@ -11,18 +11,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
 public class JwtService {
 
-    private SecretKey Key;
+    private final SecretKey key;
     private  static  final long EXPIRATION_TIME = 86400000;  //24 hours
 
     public JwtService(){
         String secreteString = "843567893696976453275974432697R634976R738467TR678T34865R6834R8763T478378637664538745673865783678548735687R3";
         byte[] keyBytes = Base64.getDecoder().decode(secreteString.getBytes(StandardCharsets.UTF_8));
-        this.Key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        this.key = new SecretKeySpec(keyBytes, "HmacSHA256");
     }
 
     public String generateToken(UserDetails userDetails){
@@ -34,10 +35,10 @@ public class JwtService {
                 .claim("sub", userDetails.getUsername())
                 .claim("iat", now) // ✅ Issued At
                 .claim("exp", expiryDate) // ✅ Expiration
-                .signWith(Key)
+                .signWith(key)
                 .compact();
     }
-    public  String generateRefreshToken(HashMap<String, Object> claims, UserDetails userDetails){
+    public  String generateRefreshToken(Map<String, Object> claims, UserDetails userDetails){
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
 
@@ -46,17 +47,17 @@ public class JwtService {
                 .claim("sub", userDetails.getUsername())
                 .claim("iat", now)
                 .claim("exp", expiryDate)
-                .signWith(Key)
+                .signWith(key)
                 .compact();
     }
 
-    public  String extractUsername(String token){
-        return  extractClaims(token, Claims::getSubject);
+    public String extractUsername(String token){
+        return extractClaims(token, Claims::getSubject);
     }
 
     private <T> T extractClaims(String token, Function<Claims, T> claimsTFunction){
         return claimsTFunction.apply(Jwts.parserBuilder()
-                .setSigningKey(Key) // ✅ Đúng cách dùng mới
+                .setSigningKey(key) // ✅ Đúng cách dùng mới
                 .build()
                 .parseClaimsJws(token)
                 .getBody());

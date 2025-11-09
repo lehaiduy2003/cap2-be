@@ -2,6 +2,7 @@ package com.c1se_01.roomiego.controller;
 
 import com.c1se_01.roomiego.dto.ApiResponse;
 import com.c1se_01.roomiego.dto.RoomDTO;
+import com.c1se_01.roomiego.dto.common.FilterParam;
 import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.service.RoomService;
 import com.c1se_01.roomiego.service.impl.FileStorageService;
@@ -103,8 +104,10 @@ public class RoomController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<RoomDTO>>> getAllRooms() {
-        List<RoomDTO> rooms = roomService.getAllRooms();
+    public ResponseEntity<ApiResponse<List<RoomDTO>>> getAllRooms(
+        FilterParam filterParam
+        ) {
+        List<RoomDTO> rooms = roomService.getAllRooms(filterParam);
         return ResponseEntity.ok(new ApiResponse<>(200, "Danh sách phòng", rooms));
     }
 

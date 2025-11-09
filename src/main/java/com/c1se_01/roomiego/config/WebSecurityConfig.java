@@ -38,6 +38,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/**", "/maps/**", "/public/**", "/api/markers","/api/roommates/**","/api/rooms","/api/rooms/{id}","/api/roommates/export-to-file", "/ws/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/health").permitAll() // ✅ Cho phép API này truy cập công khai
                         .requestMatchers( "/api/rooms/owner", "/api/rooms/owner/{ownerId}", "/owner/get-all-users").hasAnyAuthority("OWNER","ADMIN")
                         .requestMatchers("/renter/**", "/api/roommates/**").hasAnyAuthority("RENTER")
+                        .requestMatchers("/api/rent-histories/**").hasAnyAuthority("RENTER", "ADMIN")
                         .requestMatchers("/api/rent-requests/**", "/api/contracts/**").hasAnyAuthority("RENTER", "OWNER", "ADMIN") // Specific rule for get-users endpoint
                         .requestMatchers("/renterowner/**", "/api/reports/**","/owner/get-users/{userId}","/owner/**").hasAnyAuthority("OWNER", "RENTER", "ADMIN")
                         .requestMatchers("/images/**", "/api/socket", "/api/socket/**", "/api/notifications", "/messages/**").permitAll()

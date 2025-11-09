@@ -1,6 +1,7 @@
 package com.c1se_01.roomiego.service.impl;
 
 import com.c1se_01.roomiego.dto.RoomDTO;
+import com.c1se_01.roomiego.dto.common.FilterParam;
 import com.c1se_01.roomiego.enums.Role;
 import com.c1se_01.roomiego.exception.ForbiddenException;
 import com.c1se_01.roomiego.exception.NotFoundException;
@@ -12,14 +13,17 @@ import com.c1se_01.roomiego.repository.RoomImageRepository;
 import com.c1se_01.roomiego.repository.RoomRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
 import com.c1se_01.roomiego.service.RoomService;
+import com.c1se_01.roomiego.service.specification.RoomSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
@@ -55,8 +59,11 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public List<RoomDTO> getAllRooms() {
-        List<Room> rooms = roomRepository.findAll();
+    public List<RoomDTO> getAllRooms(FilterParam filterParam) {
+        log.info(filterParam.toString());
+        Specification<Room> spec = RoomSpecification.buildSpecification(filterParam);
+        log.info(spec.toString());
+        List<Room> rooms = roomRepository.findAll(spec);
         if (rooms.isEmpty()) {
             throw new NotFoundException("Không có phòng nào được tìm thấy");
         }
@@ -105,12 +112,10 @@ public class RoomServiceImpl implements RoomService {
     public List<RoomDTO> getRoomsByOwner(Long ownerId) {
         List<Room> rooms = roomRepository.findByOwnerId(ownerId);
         if (rooms.isEmpty()) {
-            throw new NotFoundException("Không có phòng nào được tìm thấy cho owner này");
+            throw new NotFoundException("Không có phòng nào được tìm thay cho owner này");
         }
         return rooms.stream()
                 .map(roomMapper::toDTO)
                 .collect(Collectors.toList());
     }
-
-
 }
