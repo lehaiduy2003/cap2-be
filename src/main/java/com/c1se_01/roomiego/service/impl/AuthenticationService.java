@@ -288,4 +288,28 @@ public class AuthenticationService {
         }
         return reqRes;
     }
+
+    public UserDto getUserByEmail(String email) {
+        UserDto response = new UserDto();
+        try {
+            Optional<User> userOptional = userRepository.findByEmail(email);
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+                response.setId(user.getId());
+                response.setEmail(user.getEmail());
+                response.setFullName(user.getFullName());
+                response.setPhone(user.getPhone());
+                response.setStatusCode(200);
+                response.setMessage("successful");
+            } else {
+                response.setStatusCode(404);
+                response.setMessage("User not found");
+            }
+        } catch (Exception e) {
+            log.error("Error getting user by email: ", e);
+            response.setStatusCode(500);
+            response.setMessage("Error occurred while getting user info: " + e.getMessage());
+        }
+        return response;
+    }
 }

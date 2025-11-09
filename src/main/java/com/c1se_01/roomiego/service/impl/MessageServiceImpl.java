@@ -1,10 +1,8 @@
 package com.c1se_01.roomiego.service.impl;
 
 import com.c1se_01.roomiego.dto.MessageDto;
-import com.c1se_01.roomiego.dto.NotificationDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.enums.MessageType;
-import com.c1se_01.roomiego.enums.NotificationType;
 import com.c1se_01.roomiego.enums.Status;
 import com.c1se_01.roomiego.exception.NotFoundException;
 import com.c1se_01.roomiego.model.Conversation;
@@ -14,8 +12,8 @@ import com.c1se_01.roomiego.repository.ConversationRepository;
 import com.c1se_01.roomiego.repository.MessageRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
 import com.c1se_01.roomiego.service.MessageService;
-import com.c1se_01.roomiego.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,12 +22,12 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
-    private final NotificationService notificationService;
 
     @Override
     public Message sendMessage(SendMessageRequest request) {
@@ -74,11 +72,11 @@ public class MessageServiceImpl implements MessageService {
         // Set sender and receiver names
         User sender = userRepository.findById(request.getSenderId())
                 .orElseThrow(() -> new NotFoundException("Sender not found"));
-        message.setSenderName(sender.getFullName());
+        message.setSenderName(sender.getEmail());
         
         User receiver = request.getSenderId().equals(user1Id) ? 
                 conversation.getUser2() : conversation.getUser1();
-        message.setReceiverName(receiver.getFullName());
+        message.setReceiverName(receiver.getEmail());
         message.setReceiverId(receiver.getId());
 
         Message savedMessage = messageRepository.save(message);
@@ -103,25 +101,83 @@ public class MessageServiceImpl implements MessageService {
         }
 
         // Save to the database
-        messageRepository.save(new Message(
-                messageDto.getSenderName(),
-                messageDto.getReceiverName(),  // Can be null for public messages
-                messageDto.getMessage(),
-                messageDto.getMedia(),
-                messageDto.getMediaType(),
-                messageDto.getStatus(),
-                System.currentTimeMillis(),  // Current timestamp
-                messageDto.getType()
-        ));
+        Message message = new Message();
+        message.setSenderId(messageDto.getSenderId());
+        message.setSenderName(messageDto.getSenderName());
+        message.setReceiverId(messageDto.getReceiverId());
+        message.setReceiverName(messageDto.getReceiverName());
+        message.setMessage(messageDto.getMessage());
+        message.setMedia(messageDto.getMedia());
+        message.setMediaType(messageDto.getMediaType());
+        message.setStatus(messageDto.getStatus());
+        message.setTimestamp(System.currentTimeMillis());
+        message.setType(messageDto.getType());
+
+        Long resolvedSenderId = messageDto.getSenderId();
+        Long resolvedReceiverId = messageDto.getReceiverId();
+        if (resolvedSenderId == null && messageDto.getSenderName() != null) {
+            resolvedSenderId = resolveUserId(messageDto.getSenderName());
+            message.setSenderId(resolvedSenderId);
+        }
+        if (resolvedReceiverId == null && messageDto.getReceiverName() != null) {
+            resolvedReceiverId = resolveUserId(messageDto.getReceiverName());
+            message.setReceiverId(resolvedReceiverId);
+        }
+        log.info("Saving message from {} ({}) to {} ({})", messageDto.getSenderName(), resolvedSenderId, messageDto.getReceiverName(), resolvedReceiverId);
+        String conversationId = messageDto.getConversationId();
+        if (resolvedSenderId != null && resolvedReceiverId != null) {
+            final Long senderIdFinal = resolvedSenderId;
+            final Long receiverIdFinal = resolvedReceiverId;
+            Conversation conversation = conversationRepository
+                    .findByUser1IdAndUser2Id(senderIdFinal, receiverIdFinal)
+                    .orElseGet(() -> {
+                        User sender = userRepository.findById(senderIdFinal)
+                                .orElseThrow(() -> new NotFoundException("Sender not found"));
+                        User receiver = userRepository.findById(receiverIdFinal)
+                                .orElseThrow(() -> new NotFoundException("Receiver not found"));
+                        Conversation newConversation = new Conversation();
+                        newConversation.setUser1(sender);
+                        newConversation.setUser2(receiver);
+                        newConversation.setCreatedAt(new Date());
+                        return conversationRepository.save(newConversation);
+                    });
+            message.setConversationId(conversation.getId());
+        } else if (conversationId != null) {
+            try {
+                Long numericConversationId = Long.parseLong(conversationId);
+                message.setConversationId(numericConversationId);
+            } catch (NumberFormatException ignored) { }
+        }
+
+        messageRepository.save(message);
     }
 
     @Override
     public List<Message> findChatHistoryBetweenUsers(String user1, String user2) {
-        return messageRepository.findChatHistoryBetweenUsers(user1, user2);
+        Long user1Id = resolveUserId(user1);
+        Long user2Id = resolveUserId(user2);
+        if (user1Id == null || user2Id == null) {
+            return List.of();
+        }
+        return messageRepository.findChatHistoryBetweenUsers(user1Id, user2Id);
     }
 
     @Override
     public List<Message> findByType(MessageType type) {
         return messageRepository.findByType(type);
+    }
+
+    private Long resolveUserId(String identifier) {
+        if (identifier == null) {
+            return null;
+        }
+        String normalized = identifier.trim().toLowerCase();
+        try {
+            return Long.parseLong(normalized);
+        } catch (NumberFormatException ex) {
+            return userRepository.findByEmail(normalized)
+                    .map(User::getId)
+                    .orElse(null);
+        }
     }
 }
