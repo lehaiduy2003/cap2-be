@@ -1,17 +1,22 @@
 package com.c1se_01.roomiego.service.impl;
 
+import com.c1se_01.roomiego.dto.AiRecommendationDTO;
 import com.c1se_01.roomiego.dto.RoommateDTO;
 import com.c1se_01.roomiego.dto.RoommateResponseDTO;
-import com.c1se_01.roomiego.mapper.RoommateMapper;
 import com.c1se_01.roomiego.model.Roommate;
 import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.repository.RoommateRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
 import com.c1se_01.roomiego.service.RoommateService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,10 +24,15 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RoommateServiceImpl implements RoommateService {
     private final RoommateRepository roommateRepository;
     private final UserRepository userRepository;
-    private final RoommateMapper roommateMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${ai.service.url}")
+    private String aiServiceUrl;
 
     @Override
     public RoommateResponseDTO createRoommate(RoommateDTO dto) {
@@ -64,6 +74,45 @@ public class RoommateServiceImpl implements RoommateService {
                 .toList();
         }
         return roommateList;
+    }
+
+    @Override
+    public List<AiRecommendationDTO> getRecommendations(Long userId) {
+        try {
+            // Call AI service to get recommendations
+            String url = aiServiceUrl + "/recommend?user_id=" + userId;
+            log.debug("Calling AI service at: {}", url);
+            
+            String response = restTemplate.getForObject(url, String.class);
+            log.debug("AI service response: {}", response);
+            // Parse JSON response using AI-specific DTO
+            List<AiRecommendationDTO> aiRecommendations = objectMapper.readValue(
+                response, 
+                new TypeReference<List<AiRecommendationDTO>>() {}
+            );
+            
+            // Convert AI DTOs to RoommateResponseDTO
+            List<AiRecommendationDTO> recommendations = new ArrayList<>();
+            for (AiRecommendationDTO aiRec : aiRecommendations) {
+                AiRecommendationDTO dto = new AiRecommendationDTO();
+                dto.setUserId(aiRec.getUserId());
+                dto.setGender(aiRec.getGender());
+                dto.setHometown(aiRec.getHometown());
+                dto.setCity(aiRec.getCity());
+                dto.setDistrict(aiRec.getDistrict());
+                dto.setYob(aiRec.getYob());
+                dto.setHobbies(aiRec.getHobbies());
+                dto.setJob(aiRec.getJob());
+                dto.setMore(aiRec.getMore());
+                dto.setRateImage(aiRec.getRateImage());
+                
+                recommendations.add(dto);
+            }
+            
+            return recommendations;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get recommendations from AI service: " + e.getMessage());
+        }
     }
 
     private RoommateResponseDTO mapToResponseDTO(Roommate roommate) {
