@@ -30,6 +30,8 @@ public class UserDto {
     private String bio;
     private LocalDateTime createdAt;
     private User user;
+    private String avatarUrl;
+    private String job;
 
     private List<User> usersList;
 

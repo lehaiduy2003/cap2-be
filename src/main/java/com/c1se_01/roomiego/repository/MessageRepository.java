@@ -13,12 +13,15 @@ import java.util.List;
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query("SELECT m FROM Message m WHERE " +
-            "(m.senderName = :user1 AND m.receiverName = :user2) OR " +
-            "(m.senderName = :user2 AND m.receiverName = :user1) " +
+            "(m.senderId = :user1Id AND m.receiverId = :user2Id) OR " +
+            "(m.senderId = :user2Id AND m.receiverId = :user1Id) " +
             "ORDER BY m.timestamp ASC")
-    List<Message> findChatHistoryBetweenUsers(@Param("user1") String user1, @Param("user2") String user2);
+    List<Message> findChatHistoryBetweenUsers(
+            @Param("user1Id") Long user1Id,
+            @Param("user2Id") Long user2Id
+    );
 
     List<Message> findByType(MessageType type);
 
-    List<Message> findBySenderName(String senderName);
+    List<Message> findBySenderId(Long senderId);
 }

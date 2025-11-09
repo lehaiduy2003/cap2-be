@@ -2,12 +2,11 @@ package com.c1se_01.roomiego.model;
 
 import com.c1se_01.roomiego.enums.MessageType;
 import com.c1se_01.roomiego.enums.Status;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.Date;
 
 @Entity
 @Table(name = "messages")
@@ -51,6 +50,7 @@ public class Message {
 
     @ManyToOne
     @JoinColumn(name = "conversation_id", insertable = false, updatable = false)
+    @JsonIgnore
     private Conversation conversation;
 
 //    @ManyToOne

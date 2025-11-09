@@ -6,7 +6,6 @@ import com.c1se_01.roomiego.model.Message;
 import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.service.MessageService;
 import com.c1se_01.roomiego.service.UserService;
-import com.c1se_01.roomiego.enums.MessageType;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

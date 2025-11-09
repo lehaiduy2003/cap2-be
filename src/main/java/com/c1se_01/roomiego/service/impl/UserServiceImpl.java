@@ -29,10 +29,8 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("No authenticated user found");
         }
         User user = (User) authentication.getPrincipal();
-        String senderEmail = user.getEmail();
-
-        // Tìm danh sách Message dựa trên senderName (email của user hiện tại)
-        List<Message> messages = messageRepository.findBySenderName(senderEmail);
+        Long senderId = user.getId();
+        List<Message> messages = messageRepository.findBySenderId(senderId);
 
         // Lấy danh sách receiverName (email) từ messages
         List<String> receiverEmails = messages.stream()

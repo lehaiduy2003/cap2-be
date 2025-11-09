@@ -13,8 +13,12 @@ import lombok.ToString;
 @ToString
 public class MessageDto {
     private String senderName;
+    private Long senderId;
 
     private String receiverName;
+    private Long receiverId;
+
+    private String conversationId;
 
     private String message;
 

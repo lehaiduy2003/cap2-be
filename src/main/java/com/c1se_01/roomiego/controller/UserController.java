@@ -44,6 +44,12 @@ public class UserController {
 
     }
 
+    @GetMapping("/users/email/{email}")
+    public ResponseEntity<UserDto> getUserByEmail(@PathVariable String email) {
+        UserDto response = authenticationService.getUserByEmail(email);
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
     @PutMapping("/owner/update/{userId}")
     public ResponseEntity<UserDto> updateUser(@PathVariable Integer userId, @RequestBody User reqres){
         return ResponseEntity.ok(authenticationService.updateUser(userId, reqres));
