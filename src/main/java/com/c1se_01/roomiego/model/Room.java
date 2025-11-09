@@ -90,8 +90,13 @@ public class Room {
 
     @Column(name = "address_details")
     private String addressDetails;
+
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<ViewRequest> viewRequests;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<RentRequest> rentRequests;
 
 }
