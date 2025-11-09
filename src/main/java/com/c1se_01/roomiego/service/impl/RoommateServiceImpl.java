@@ -3,16 +3,20 @@ package com.c1se_01.roomiego.service.impl;
 import com.c1se_01.roomiego.dto.AiRecommendationDTO;
 import com.c1se_01.roomiego.dto.RoommateDTO;
 import com.c1se_01.roomiego.dto.RoommateResponseDTO;
+import com.c1se_01.roomiego.exception.NotFoundException;
 import com.c1se_01.roomiego.model.Roommate;
 import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.repository.RoommateRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
 import com.c1se_01.roomiego.service.RoommateService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -64,54 +68,51 @@ public class RoommateServiceImpl implements RoommateService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         User currentUser = userRepository.findByEmail(email).orElse(null);
-        
+
         List<RoommateResponseDTO> roommateList = new ArrayList<>();
         if (Objects.nonNull(currentUser)) {
             List<Roommate> roommates = roommateRepository.findAllByGender(String.valueOf(currentUser.getGender()));
             roommateList = roommates.stream()
-                .filter(roommate -> !currentUser.getId().equals(roommate.getUser().getId()))
-                .map(this::mapToResponseDTO)
-                .toList();
+                    .filter(roommate -> !currentUser.getId().equals(roommate.getUser().getId()))
+                    .map(this::mapToResponseDTO)
+                    .toList();
         }
         return roommateList;
     }
 
     @Override
-    public List<AiRecommendationDTO> getRecommendations(Long userId) {
-        try {
-            // Call AI service to get recommendations
-            String url = aiServiceUrl + "/recommend?user_id=" + userId;
-            log.debug("Calling AI service at: {}", url);
-            
-            String response = restTemplate.getForObject(url, String.class);
+    public List<AiRecommendationDTO> getRecommendations(Long userId) throws JsonProcessingException {
+        // Call AI service to get recommendations
+        String url = aiServiceUrl + "/recommend?user_id=" + userId;
+        log.debug("Calling AI service at: {}", url);
+
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                String.class);
+
+        int statusCode = responseEntity.getStatusCode().value();
+        log.debug("AI service response status: {}", statusCode);
+
+        // Handle 404 - No recommendations found
+        if (statusCode == 404) {
+            throw new NotFoundException("Không tìm thấy kết quả phù hợp");
+        }
+
+        // Handle 200 - Success
+        if (statusCode == 200) {
+            String response = responseEntity.getBody();
             log.debug("AI service response: {}", response);
+
             // Parse JSON response using AI-specific DTO
-            List<AiRecommendationDTO> aiRecommendations = objectMapper.readValue(
-                response, 
-                new TypeReference<List<AiRecommendationDTO>>() {}
-            );
-            
-            // Convert AI DTOs to RoommateResponseDTO
-            List<AiRecommendationDTO> recommendations = new ArrayList<>();
-            for (AiRecommendationDTO aiRec : aiRecommendations) {
-                AiRecommendationDTO dto = new AiRecommendationDTO();
-                dto.setUserId(aiRec.getUserId());
-                dto.setGender(aiRec.getGender());
-                dto.setHometown(aiRec.getHometown());
-                dto.setCity(aiRec.getCity());
-                dto.setDistrict(aiRec.getDistrict());
-                dto.setYob(aiRec.getYob());
-                dto.setHobbies(aiRec.getHobbies());
-                dto.setJob(aiRec.getJob());
-                dto.setMore(aiRec.getMore());
-                dto.setRateImage(aiRec.getRateImage());
-                
-                recommendations.add(dto);
-            }
-            
-            return recommendations;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get recommendations from AI service: " + e.getMessage());
+            return objectMapper.readValue(
+                    response,
+                    new TypeReference<List<AiRecommendationDTO>>() {
+                    });
+        } else {
+            throw new RuntimeException(
+                    "Failed to get recommendations from AI service: " + statusCode);
         }
     }
 

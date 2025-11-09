@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
 ENV PORT=8080
 EXPOSE 8080
-CMD ["sh","-c","java -jar app.jar --server.port=${PORT}"]
+CMD ["sh","-c","java -Djava.net.preferIPv4Stack=false -jar app.jar --server.address=:: --server.port=${PORT}"]

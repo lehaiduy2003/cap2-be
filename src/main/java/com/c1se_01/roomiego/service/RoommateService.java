@@ -3,6 +3,7 @@ package com.c1se_01.roomiego.service;
 import com.c1se_01.roomiego.dto.AiRecommendationDTO;
 import com.c1se_01.roomiego.dto.RoommateDTO;
 import com.c1se_01.roomiego.dto.RoommateResponseDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.List;
 
@@ -11,5 +12,5 @@ public interface RoommateService {
 
     List<RoommateResponseDTO> getAllRoommates();
 
-    List<AiRecommendationDTO> getRecommendations(Long userId);
+    List<AiRecommendationDTO> getRecommendations(Long userId) throws JsonProcessingException;
 }

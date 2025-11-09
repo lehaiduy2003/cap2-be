@@ -5,6 +5,7 @@ import com.c1se_01.roomiego.dto.ApiResponse;
 import com.c1se_01.roomiego.dto.RoommateDTO;
 import com.c1se_01.roomiego.dto.RoommateResponseDTO;
 import com.c1se_01.roomiego.service.RoommateService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +63,11 @@ public class RoomateController {
 
     @GetMapping("/recommend/{userId}")
     public ResponseEntity<ApiResponse<List<AiRecommendationDTO>>> getRecommendations(@PathVariable Long userId) {
-        List<AiRecommendationDTO> recommendations = roommateService.getRecommendations(userId);
-        return ResponseEntity.ok(new ApiResponse<>(200, "Gợi ý roommate thành công", recommendations));
+        try {
+            List<AiRecommendationDTO> recommendations = roommateService.getRecommendations(userId);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Gợi ý roommate thành công", recommendations));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi khi lấy gợi ý roommate", null));
+        }
     }
 }
