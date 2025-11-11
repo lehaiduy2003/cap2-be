@@ -27,7 +27,11 @@ public class MessageController {
 
     @PostMapping("/send")
     public ResponseEntity<Message> sendMessage(@RequestBody SendMessageRequest request) {
-        return ResponseEntity.ok(messageService.sendMessage(request));
+        try {
+            return ResponseEntity.ok(messageService.sendMessage(request));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @GetMapping("/logout")
@@ -40,7 +44,7 @@ public class MessageController {
     public ResponseEntity<List<User>> findByUsername(@RequestParam String username) {
         List<User> users = userService.findByFullName(username);
         if (users == null || users.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         return ResponseEntity.ok(users);
     }
@@ -53,8 +57,7 @@ public class MessageController {
     @GetMapping("/api/messages/history/{user1}/{user2}")
     public ResponseEntity<List<Message>> getChatHistory(
             @PathVariable String user1,
-            @PathVariable String user2
-    ) {
+            @PathVariable String user2) {
         List<Message> messages = messageService.findChatHistoryBetweenUsers(user1, user2);
         return ResponseEntity.ok(messages);
     }
