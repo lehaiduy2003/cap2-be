@@ -7,7 +7,6 @@ import com.c1se_01.roomiego.dto.RentRequestUpdateRequest;
 import com.c1se_01.roomiego.enums.NotificationType;
 import com.c1se_01.roomiego.enums.RentRequestStatus;
 import com.c1se_01.roomiego.mapper.RentRequestMapper;
-import com.c1se_01.roomiego.model.Notification;
 import com.c1se_01.roomiego.model.RentRequest;
 import com.c1se_01.roomiego.model.Room;
 import com.c1se_01.roomiego.model.User;

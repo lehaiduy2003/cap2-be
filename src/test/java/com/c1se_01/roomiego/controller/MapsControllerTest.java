@@ -4,7 +4,7 @@ import com.c1se_01.roomiego.dto.LocationMarkerRequest;
 import com.c1se_01.roomiego.dto.LocationMarkerResponse;
 import com.c1se_01.roomiego.dto.LocationResponse;
 import com.c1se_01.roomiego.dto.LocationSearchRequest;
-import com.c1se_01.roomiego.service.GoogleMapsService;
+import com.c1se_01.roomiego.service.impl.GoogleMapsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

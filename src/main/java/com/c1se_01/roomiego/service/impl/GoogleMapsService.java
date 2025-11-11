@@ -1,4 +1,4 @@
-package com.c1se_01.roomiego.service;
+package com.c1se_01.roomiego.service.impl;
 
 import com.c1se_01.roomiego.dto.LocationMarkerRequest;
 import com.c1se_01.roomiego.dto.LocationMarkerResponse;
@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 public class GoogleMapsService {
 
-    @Value("${GOOGLE_MAPS_API_KEY}")
+    @Value("${google.maps.api.key}")
     private String googleMapsApiKey;
 
     private final RestTemplate restTemplate;
@@ -39,25 +39,31 @@ public class GoogleMapsService {
         this.objectMapper = new ObjectMapper();
     }
 
+    // Constructor for testing
+    public GoogleMapsService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
+
     public LocationMarkerResponse[] getMarkers(List<LocationMarkerRequest> requests) {
         List<LocationMarkerResponse> responses = new ArrayList<>();
 
-        for(LocationMarkerRequest request : requests) {
+        for (LocationMarkerRequest request : requests) {
             try {
                 LocationResponse.LocationData locationData = geocodeAddress(request.getAddress());
                 if (locationData != null) {
                     LocationMarkerResponse response = new LocationMarkerResponse(
-                        request.getId(),
-                        locationData.getFormattedAddress(),
-                        locationData.getLongitude(),
-                        locationData.getLatitude()
-                    );
+                            request.getId(),
+                            locationData.getFormattedAddress(),
+                            locationData.getLongitude(),
+                            locationData.getLatitude());
                     responses.add(response);
                 } else {
                     log.warn("No location data found for address: {}", request.getAddress());
                 }
             } catch (Exception e) {
-                log.error("Error processing marker request for address {}: {}", request.getAddress(), e.getMessage(), e);
+                log.error("Error processing marker request for address {}: {}", request.getAddress(), e.getMessage(),
+                        e);
             }
         }
 
@@ -75,9 +81,8 @@ public class GoogleMapsService {
 
             // Then search for nearby places
             List<LocationResponse.NearbyPlace> nearbyPlaces = searchNearbyPlaces(
-                locationData.getLatitude(), 
-                locationData.getLongitude()
-            );
+                    locationData.getLatitude(),
+                    locationData.getLongitude());
 
             return new LocationResponse("SUCCESS", "Location found successfully", locationData, nearbyPlaces);
 
@@ -88,8 +93,10 @@ public class GoogleMapsService {
     }
 
     private static String normalizeAddress(String raw) {
-        if (raw == null) return "";
-        // Only normalize Unicode, don't URL encode here - let UriComponentsBuilder handle it
+        if (raw == null)
+            return "";
+        // Only normalize Unicode, don't URL encode here - let UriComponentsBuilder
+        // handle it
         return Normalizer.normalize(raw, Normalizer.Form.NFC).trim();
     }
 
@@ -108,7 +115,7 @@ public class GoogleMapsService {
                         return result;
                     } else {
                         log.debug("Location found but outside Vietnam bounds: lat={}, lng={}",
-                               result.getLatitude(), result.getLongitude());
+                                result.getLatitude(), result.getLongitude());
                     }
                 }
             }
@@ -138,7 +145,8 @@ public class GoogleMapsService {
         // Try with common Vietnamese address prefixes if they're missing
         String addressLower = normalized.toLowerCase();
 
-        // Add "Đường" prefix to potential street names (if address starts with a number)
+        // Add "Đường" prefix to potential street names (if address starts with a
+        // number)
         if (addressLower.matches("^\\d+.*")) {
             // Extract potential street name (everything after the house number and slash)
             String[] parts = normalized.split("\\s+", 3); // Split into max 3 parts
@@ -146,9 +154,10 @@ public class GoogleMapsService {
                 // If second part doesn't start with common prefixes, try adding "Đường"
                 String secondPart = parts[1];
                 if (!secondPart.toLowerCase().startsWith("đường") &&
-                    !secondPart.toLowerCase().startsWith("phố") &&
-                    !secondPart.toLowerCase().startsWith("street")) {
-                    String withStreetPrefix = parts[0] + " Đường " + String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length));
+                        !secondPart.toLowerCase().startsWith("phố") &&
+                        !secondPart.toLowerCase().startsWith("street")) {
+                    String withStreetPrefix = parts[0] + " Đường "
+                            + String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length));
                     variations.add(withStreetPrefix);
                     variations.add(withStreetPrefix + ", Vietnam");
                 }
@@ -161,13 +170,13 @@ public class GoogleMapsService {
     private LocationResponse.LocationData tryGeocode(String address) {
         try {
             String url = UriComponentsBuilder.fromUriString(GEOCODING_URL)
-                .queryParam("address", address)
-                .queryParam("region", "vn")
-                .queryParam("components", "country:VN")
-                .queryParam("language", "vi")
-                .queryParam("key", googleMapsApiKey)
-                .build()
-                .toUriString();
+                    .queryParam("address", address)
+                    .queryParam("region", "vn")
+                    .queryParam("components", "country:VN")
+                    .queryParam("language", "vi")
+                    .queryParam("key", googleMapsApiKey)
+                    .build()
+                    .toUriString();
 
             log.debug("Geocoding URL: {}", url);
 
@@ -177,11 +186,10 @@ public class GoogleMapsService {
             headers.set("Accept-Language", "vi-VN,vi;q=0.9,en;q=0.8");
 
             ResponseEntity<String> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                String.class
-            );
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    String.class);
 
             log.debug("API Response: {}", response.getBody());
 
@@ -204,12 +212,10 @@ public class GoogleMapsService {
             JsonNode location = geometry.path("location");
 
             return new LocationResponse.LocationData(
-                first.path("formatted_address").asText(),
-                location.path("lat").asDouble(),
-                location.path("lng").asDouble(),
-                first.path("place_id").asText()
-            );
-
+                    first.path("formatted_address").asText(),
+                    location.path("lat").asDouble(),
+                    location.path("lng").asDouble(),
+                    first.path("place_id").asText());
 
         } catch (Exception e) {
             log.error("Error in tryGeocode for address: {}", address, e);
@@ -221,7 +227,7 @@ public class GoogleMapsService {
         // Vietnam approximate bounds
         // North: ~23.4, South: ~8.2, East: ~109.5, West: ~102.1
         return latitude >= 8.0 && latitude <= 23.5 &&
-               longitude >= 102.0 && longitude <= 110.0;
+                longitude >= 102.0 && longitude <= 110.0;
     }
 
     private List<LocationResponse.NearbyPlace> searchNearbyPlaces(double latitude, double longitude) {
@@ -229,8 +235,8 @@ public class GoogleMapsService {
 
         // Define important place types to search for
         String[] placeTypes = {
-            "hospital", "police", "university", "school",
-            "fire_station", "supermarket", "restaurant", "train_station", "gas_station", "park"
+                "hospital", "police", "university", "school",
+                "fire_station", "supermarket", "restaurant", "train_station", "gas_station", "park"
         };
 
         try {
@@ -241,15 +247,17 @@ public class GoogleMapsService {
 
             // Remove duplicates based on place_id and sort by distance
             nearbyPlaces = nearbyPlaces.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    LocationResponse.NearbyPlace::getPlaceId,
-                    place -> place,
-                    (existing, replacement) -> existing.getDistanceInMeters() <= replacement.getDistanceInMeters() ? existing : replacement
-                ))
-                .values()
-                .stream()
-                .sorted(Comparator.comparingDouble(LocationResponse.NearbyPlace::getDistanceInMeters))
-                .toList();
+                    .collect(java.util.stream.Collectors.toMap(
+                            LocationResponse.NearbyPlace::getPlaceId,
+                            place -> place,
+                            (existing,
+                                    replacement) -> existing.getDistanceInMeters() <= replacement.getDistanceInMeters()
+                                            ? existing
+                                            : replacement))
+                    .values()
+                    .stream()
+                    .sorted(Comparator.comparingDouble(LocationResponse.NearbyPlace::getDistanceInMeters))
+                    .toList();
 
         } catch (Exception e) {
             log.error("Error searching nearby places: {}", e.getMessage(), e);
@@ -258,14 +266,15 @@ public class GoogleMapsService {
         return nearbyPlaces;
     }
 
-    private void searchPlacesByType(double latitude, double longitude, String placeType, List<LocationResponse.NearbyPlace> nearbyPlaces) {
+    private void searchPlacesByType(double latitude, double longitude, String placeType,
+            List<LocationResponse.NearbyPlace> nearbyPlaces) {
         try {
             String url = UriComponentsBuilder.fromUriString(NEARBY_SEARCH_URL)
-                .queryParam("location", latitude + "," + longitude)
-                .queryParam("radius", RADIUS_METERS)
-                .queryParam("type", placeType)
-                .queryParam("key", googleMapsApiKey)
-                .toUriString();
+                    .queryParam("location", latitude + "," + longitude)
+                    .queryParam("radius", RADIUS_METERS)
+                    .queryParam("type", placeType)
+                    .queryParam("key", googleMapsApiKey)
+                    .toUriString();
 
             String response = restTemplate.getForObject(url, String.class);
             JsonNode root = objectMapper.readTree(response);
@@ -285,15 +294,14 @@ public class GoogleMapsService {
                 double distance = calculateDistance(latitude, longitude, placeLat, placeLng);
 
                 LocationResponse.NearbyPlace nearbyPlace = new LocationResponse.NearbyPlace(
-                    place.get("name").asText(),
-                    place.has("vicinity") ? place.get("vicinity").asText() : "",
-                    placeLat,
-                    placeLng,
-                    place.get("place_id").asText(),
-                    place.has("rating") ? place.get("rating").asDouble() : 0.0,
-                    placeType, // Use the searched place type
-                    distance
-                );
+                        place.get("name").asText(),
+                        place.has("vicinity") ? place.get("vicinity").asText() : "",
+                        placeLat,
+                        placeLng,
+                        place.get("place_id").asText(),
+                        place.has("rating") ? place.get("rating").asDouble() : 0.0,
+                        placeType, // Use the searched place type
+                        distance);
 
                 nearbyPlaces.add(nearbyPlace);
             }
@@ -310,7 +318,7 @@ public class GoogleMapsService {
         double lonDistance = Math.toRadians(lon2 - lon1);
         double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+                        * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         // distance in meters
         return R * c * 1000;
