@@ -1,5 +1,6 @@
 package com.c1se_01.roomiego.service.impl;
 
+import com.c1se_01.roomiego.dto.ConversationSummaryDTO;
 import com.c1se_01.roomiego.dto.MessageDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.enums.MessageType;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -165,6 +167,37 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public List<Message> findByType(MessageType type) {
         return messageRepository.findByType(type);
+    }
+
+    @Override
+    public List<ConversationSummaryDTO> getConversationsForUser(Long userId) {
+        List<Conversation> conversations = conversationRepository.findAllByUserId(userId);
+        return conversations.stream()
+                .map(conversation -> {
+                    User partner = conversation.getUser1().getId().equals(userId)
+                            ? conversation.getUser2()
+                            : conversation.getUser1();
+
+                    Message lastMessage = messageRepository
+                            .findTopByConversationIdOrderByTimestampDesc(conversation.getId());
+
+                    ConversationSummaryDTO dto = new ConversationSummaryDTO();
+                    dto.setConversationId(conversation.getId());
+                    dto.setPartnerId(partner.getId());
+                    dto.setPartnerEmail(partner.getEmail());
+                    dto.setPartnerName(partner.getFullName());
+                    dto.setPartnerPhone(partner.getPhone());
+                    dto.setPartnerRole(partner.getRole() != null ? partner.getRole().name() : null);
+                    dto.setLastMessage(lastMessage != null ? lastMessage.getMessage() : null);
+                    Long lastTimestamp = lastMessage != null
+                            ? lastMessage.getTimestamp()
+                            : conversation.getCreatedAt() != null
+                            ? conversation.getCreatedAt().getTime()
+                            : new Date().getTime();
+                    dto.setLastTimestamp(lastTimestamp);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     private Long resolveUserId(String identifier) {

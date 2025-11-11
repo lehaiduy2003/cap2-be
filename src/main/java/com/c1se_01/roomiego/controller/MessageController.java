@@ -1,5 +1,6 @@
 package com.c1se_01.roomiego.controller;
 
+import com.c1se_01.roomiego.dto.ConversationSummaryDTO;
 import com.c1se_01.roomiego.dto.MessageDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.model.Message;
@@ -27,11 +28,7 @@ public class MessageController {
 
     @PostMapping("/send")
     public ResponseEntity<Message> sendMessage(@RequestBody SendMessageRequest request) {
-        try {
-            return ResponseEntity.ok(messageService.sendMessage(request));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
+        return ResponseEntity.ok(messageService.sendMessage(request));
     }
 
     @GetMapping("/logout")
@@ -44,7 +41,7 @@ public class MessageController {
     public ResponseEntity<List<User>> findByUsername(@RequestParam String username) {
         List<User> users = userService.findByFullName(username);
         if (users == null || users.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
         return ResponseEntity.ok(users);
     }
@@ -57,7 +54,8 @@ public class MessageController {
     @GetMapping("/api/messages/history/{user1}/{user2}")
     public ResponseEntity<List<Message>> getChatHistory(
             @PathVariable String user1,
-            @PathVariable String user2) {
+            @PathVariable String user2
+    ) {
         List<Message> messages = messageService.findChatHistoryBetweenUsers(user1, user2);
         return ResponseEntity.ok(messages);
     }
@@ -75,5 +73,11 @@ public class MessageController {
         String receiver = messageDto.getReceiverName();
         simpMessagingTemplate.convertAndSendToUser(receiver, "/private", messageDto);
         messageService.saveMessage(messageDto);
+    }
+
+    @GetMapping("/api/messages/conversations/{userId}")
+    public ResponseEntity<List<ConversationSummaryDTO>> getConversations(@PathVariable Long userId) {
+        List<ConversationSummaryDTO> conversations = messageService.getConversationsForUser(userId);
+        return ResponseEntity.ok(conversations);
     }
 }
