@@ -17,7 +17,3 @@ UPDATE rooms SET latitude=16.0238326, longitude=108.2125453 WHERE id=56;
 UPDATE rooms SET latitude=16.0196238, longitude=108.2547698 WHERE id=57;
 UPDATE rooms SET latitude=16.0731131, longitude=108.1745569 WHERE id=58;
 UPDATE rooms SET latitude=16.0731131, longitude=108.1745569 WHERE id=59;
-
-ALTER TABLE rooms
-  MODIFY latitude DOUBLE NOT NULL,
-  MODIFY longitude DOUBLE NOT NULL;
