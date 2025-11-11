@@ -12,11 +12,11 @@ import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.repository.RoomImageRepository;
 import com.c1se_01.roomiego.repository.RoomRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
-import com.c1se_01.roomiego.service.GoogleMapsService;
 import com.c1se_01.roomiego.service.RoomService;
 import com.c1se_01.roomiego.service.specification.RoomSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -80,7 +80,7 @@ public class RoomServiceImpl implements RoomService {
         log.info(filterParam.toString());
         Specification<Room> spec = RoomSpecification.buildSpecification(filterParam);
         log.info(spec.toString());
-        List<Room> rooms = roomRepository.findAll(spec);
+        List<Room> rooms = roomRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
         if (rooms.isEmpty()) {
             throw new NotFoundException("Không có phòng nào được tìm thấy");
         }

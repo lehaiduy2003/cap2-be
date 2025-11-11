@@ -6,7 +6,6 @@ import com.c1se_01.roomiego.dto.ReportRequest;
 import com.c1se_01.roomiego.dto.ReportResponse;
 import com.c1se_01.roomiego.service.ReportService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +32,7 @@ public class ReportController {
             @RequestParam(required = false) Boolean isHandled,
             @RequestParam(value = "page", required = false) final Optional<Integer> page,
             @RequestParam(value = "limit", required = false) final Optional<Integer> size) {
-        final Pageable pageable =
-                PageRequest.of(page.orElse(1) - 1, size.orElse(25));
+        final Pageable pageable = PageRequest.of(page.orElse(1) - 1, size.orElse(25));
         return ResponseEntity.ok(reportService.getReports(isHandled, pageable));
     }
 

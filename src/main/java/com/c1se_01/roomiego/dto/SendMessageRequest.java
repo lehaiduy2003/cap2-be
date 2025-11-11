@@ -7,7 +7,7 @@ public class SendMessageRequest {
     private String conversationId;
     private Long senderId;
     private String content;
-    
+
     // Helper method to extract numeric ID if needed
     public Long getNumericConversationId() {
         if (conversationId == null || !conversationId.startsWith("conv_")) {
