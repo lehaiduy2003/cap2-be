@@ -4,6 +4,7 @@ import com.c1se_01.roomiego.dto.MessageDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.model.Message;
 import com.c1se_01.roomiego.enums.MessageType;
+import com.c1se_01.roomiego.dto.ConversationSummaryDTO;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface MessageService {
     List<Message> findChatHistoryBetweenUsers(String user1, String user2);
 
     List<Message> findByType(MessageType type);
+
+    List<ConversationSummaryDTO> getConversationsForUser(Long userId);
 }
