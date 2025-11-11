@@ -12,6 +12,7 @@ import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.repository.RoomImageRepository;
 import com.c1se_01.roomiego.repository.RoomRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
+import com.c1se_01.roomiego.service.GoogleMapsService;
 import com.c1se_01.roomiego.service.RoomService;
 import com.c1se_01.roomiego.service.specification.RoomSpecification;
 import lombok.RequiredArgsConstructor;
@@ -28,11 +29,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
-    private final RoomImageRepository roomImageRepository;  // Tiêm RoomImageRepository vào đây
+    private final RoomImageRepository roomImageRepository; // Tiêm RoomImageRepository vào đây
 
     private final UserRepository userRepository;
+    private final GoogleMapsService googleMapsService;
 
     private final RoomMapper roomMapper;
+
     @Override
     public RoomDTO createRoom(RoomDTO roomDTO, Long ownerId) {
         User user = userRepository.findById(ownerId)
@@ -43,6 +46,20 @@ public class RoomServiceImpl implements RoomService {
         }
 
         roomDTO.setOwnerId(ownerId); // Gán ownerId chính xác
+
+        if (roomDTO.getLatitude() == null || roomDTO.getLongitude() == null) {
+            String fullAddress = buildFullAddress(roomDTO);
+            if (fullAddress != null) {
+                var locationResponse = googleMapsService.geocodeAddress(fullAddress);
+                if (locationResponse != null) {
+                    roomDTO.setLatitude(locationResponse.getLatitude());
+                    roomDTO.setLongitude(locationResponse.getLongitude());
+                } else {
+                    throw new NotFoundException("Không thể lấy tọa độ cho địa chỉ đã cho");
+                }
+
+            }
+        }
 
         Room room = roomMapper.toEntity(roomDTO);
         Room savedRoom = roomRepository.save(room);
@@ -117,5 +134,27 @@ public class RoomServiceImpl implements RoomService {
         return rooms.stream()
                 .map(roomMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    private String buildFullAddress(RoomDTO roomDTO) {
+        List<String> addressParts = new java.util.ArrayList<>();
+
+        if (roomDTO.getAddressDetails() != null && !roomDTO.getAddressDetails().trim().isEmpty()) {
+            addressParts.add(roomDTO.getAddressDetails().trim());
+        }
+        if (roomDTO.getStreet() != null && !roomDTO.getStreet().trim().isEmpty()) {
+            addressParts.add(roomDTO.getStreet().trim());
+        }
+        if (roomDTO.getWard() != null && !roomDTO.getWard().trim().isEmpty()) {
+            addressParts.add(roomDTO.getWard().trim());
+        }
+        if (roomDTO.getDistrict() != null && !roomDTO.getDistrict().trim().isEmpty()) {
+            addressParts.add(roomDTO.getDistrict().trim());
+        }
+        if (roomDTO.getCity() != null && !roomDTO.getCity().trim().isEmpty()) {
+            addressParts.add(roomDTO.getCity().trim());
+        }
+
+        return addressParts.isEmpty() ? null : String.join(", ", addressParts);
     }
 }

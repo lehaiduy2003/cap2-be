@@ -3,7 +3,6 @@ package com.c1se_01.roomiego.service;
 import com.c1se_01.roomiego.dto.LocationMarkerRequest;
 import com.c1se_01.roomiego.dto.LocationMarkerResponse;
 import com.c1se_01.roomiego.dto.LocationResponse;
-import com.c1se_01.roomiego.repository.MarkerRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +32,7 @@ public class GoogleMapsService {
 
     private static final String GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
     private static final String NEARBY_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
-    private static final int RADIUS_METERS = 1000; // 1km
+    private static final int RADIUS_METERS = 500; // 500m
 
     public GoogleMapsService() {
         this.restTemplate = new RestTemplate();
@@ -94,7 +93,7 @@ public class GoogleMapsService {
         return Normalizer.normalize(raw, Normalizer.Form.NFC).trim();
     }
 
-    private LocationResponse.LocationData geocodeAddress(String address) {
+    public LocationResponse.LocationData geocodeAddress(String address) {
         try {
             // Try multiple variations of the address for better accuracy
             String[] addressVariations = createAddressVariations(address);
@@ -231,7 +230,7 @@ public class GoogleMapsService {
         // Define important place types to search for
         String[] placeTypes = {
             "hospital", "police", "university", "school",
-            "fire_station", "bank", "supermarket"
+            "fire_station", "supermarket", "restaurant", "train_station", "gas_station", "park"
         };
 
         try {
