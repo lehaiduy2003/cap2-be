@@ -19,6 +19,8 @@ bin/
 
 .env
 
+D:/RoomieGO/roommate_finder
+
 application-dev.properties
 application-prod.properties
 
