@@ -55,8 +55,22 @@ class JwtAuthenticationFilterTest {
   }
 
   @Test
+  void doFilterInternal_AuthPath_ShouldBypassAuthentication() throws ServletException, IOException {
+    // Arrange
+    when(request.getRequestURI()).thenReturn("/auth/login");
+
+    // Act
+    jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+    // Assert
+    verify(filterChain).doFilter(request, response);
+    verifyNoInteractions(jwtService, ourUsersDetailService);
+  }
+
+  @Test
   void doFilterInternal_NoAuthorizationHeader_ShouldContinueFilterChain() throws ServletException, IOException {
     // Arrange
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn(null);
 
     // Act
@@ -70,6 +84,7 @@ class JwtAuthenticationFilterTest {
   @Test
   void doFilterInternal_BlankAuthorizationHeader_ShouldContinueFilterChain() throws ServletException, IOException {
     // Arrange
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn("");
 
     // Act
@@ -83,6 +98,7 @@ class JwtAuthenticationFilterTest {
   @Test
   void doFilterInternal_AuthorizationHeaderWithSpaces_ShouldContinueFilterChain() throws ServletException, IOException {
     // Arrange
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn("   ");
 
     // Act
@@ -97,6 +113,7 @@ class JwtAuthenticationFilterTest {
   void doFilterInternal_ValidTokenButNullUsername_ShouldContinueFilterChain() throws ServletException, IOException {
     // Arrange
     String token = "Bearer validToken";
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn(token);
     when(jwtService.extractUsername("validToken")).thenReturn(null);
 
@@ -114,12 +131,13 @@ class JwtAuthenticationFilterTest {
     // Arrange
     String token = "Bearer validToken";
     String email = "user@example.com";
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn(token);
     when(jwtService.extractUsername("validToken")).thenReturn(email);
 
     SecurityContext mockContext = mock(SecurityContext.class);
-    when(mockContext.getAuthentication()).thenReturn(mock(UsernamePasswordAuthenticationToken.class)); // already
-                                                                                                       // authenticated
+    when(mockContext.getAuthentication())
+        .thenReturn(mock(UsernamePasswordAuthenticationToken.class)); // Already authenticated
 
     try (MockedStatic<SecurityContextHolder> mocked = Mockito.mockStatic(SecurityContextHolder.class)) {
       mocked.when(SecurityContextHolder::getContext).thenReturn(mockContext);
@@ -140,6 +158,7 @@ class JwtAuthenticationFilterTest {
     // Arrange
     String token = "Bearer invalidToken";
     String email = "user@example.com";
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn(token);
     when(jwtService.extractUsername("invalidToken")).thenReturn(email);
     when(ourUsersDetailService.loadUserByUsername(email)).thenReturn(userDetails);
@@ -168,6 +187,7 @@ class JwtAuthenticationFilterTest {
     // Arrange
     String token = "Bearer validToken";
     String email = "user@example.com";
+    when(request.getRequestURI()).thenReturn("/api/test");
     when(request.getHeader("Authorization")).thenReturn(token);
     when(jwtService.extractUsername("validToken")).thenReturn(email);
     when(ourUsersDetailService.loadUserByUsername(email)).thenReturn(userDetails);
