@@ -1,6 +1,5 @@
 package com.c1se_01.roomiego.config;
 
-
 import com.c1se_01.roomiego.service.impl.JwtService;
 import com.c1se_01.roomiego.service.impl.OurUsersDetailService;
 import jakarta.servlet.FilterChain;
@@ -27,13 +26,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private OurUsersDetailService ourUsersDetailService;
 
-
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
-        final String jwtToken;
-        final String userEmail;
+        String requestURI = request.getRequestURI();
+        if (requestURI.contains("/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        String jwtToken;
+        String userEmail;
 
         if (authHeader == null || authHeader.isBlank()) {
             filterChain.doFilter(request, response);
@@ -49,8 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtService.isTokenValid(jwtToken, userDetails)) {
                 SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
                 UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities()
-                );
+                        userDetails, null, userDetails.getAuthorities());
                 token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 securityContext.setAuthentication(token);
                 SecurityContextHolder.setContext(securityContext);
