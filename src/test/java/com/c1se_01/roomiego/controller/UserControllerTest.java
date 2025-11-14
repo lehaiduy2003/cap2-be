@@ -1,8 +1,10 @@
 package com.c1se_01.roomiego.controller;
 
 import com.c1se_01.roomiego.dto.UserDto;
+import com.c1se_01.roomiego.dto.VerificationDto;
 import com.c1se_01.roomiego.model.User;
 import com.c1se_01.roomiego.service.impl.AuthenticationService;
+import com.c1se_01.roomiego.service.VerificationService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -30,6 +33,9 @@ public class UserControllerTest {
 
   @Mock
   private AuthenticationService authenticationService;
+
+  @Mock
+  private VerificationService verificationService;
 
   @InjectMocks
   private UserController userController;
@@ -374,6 +380,287 @@ public class UserControllerTest {
 
     // Act & Assert
     mockMvc.perform(delete("/owner/delete/{userId}", userId))
+        .andExpect(status().isOk());
+  }
+
+  // Verify Citizen ID Tests
+  @Test
+  public void testVerifyCitizenId_HappyCase() throws Exception {
+    // Arrange
+    VerificationDto request = new VerificationDto();
+    request.setUserId(1L);
+    request.setCitizenIdNumber("123456789012");
+
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Citizen ID verification initiated");
+    response.setUserId(1L);
+
+    when(verificationService.verifyCitizenId(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Citizen ID verification initiated"))
+        .andExpect(jsonPath("$.userId").value(1L));
+  }
+
+  @Test
+  public void testVerifyCitizenId_ErrorStatus() throws Exception {
+    // Arrange
+    VerificationDto request = new VerificationDto();
+    request.setUserId(1L);
+    request.setCitizenIdNumber("invalid");
+
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(400);
+    response.setMessage("Invalid citizen ID format");
+
+    when(verificationService.verifyCitizenId(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.statusCode").value(400))
+        .andExpect(jsonPath("$.message").value("Invalid citizen ID format"));
+  }
+
+  @Test
+  public void testVerifyCitizenId_NullRequest() throws Exception {
+    // Arrange
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification processed");
+
+    when(verificationService.verifyCitizenId(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+        .andExpect(status().isOk());
+  }
+
+  // Get Verification Status Tests
+  @Test
+  public void testGetVerificationStatus_HappyCase() throws Exception {
+    // Arrange
+    Long userId = 1L;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification status retrieved");
+    response.setUserId(userId);
+    response.setIsVerified(true);
+
+    when(verificationService.getVerificationStatus(userId)).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(get("/users/verification-status/{userId}", userId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Verification status retrieved"))
+        .andExpect(jsonPath("$.userId").value(userId))
+        .andExpect(jsonPath("$.isVerified").value(true));
+  }
+
+  @Test
+  public void testGetVerificationStatus_NotFound() throws Exception {
+    // Arrange
+    Long userId = 999L;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(404);
+    response.setMessage("Verification record not found");
+
+    when(verificationService.getVerificationStatus(userId)).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(get("/users/verification-status/{userId}", userId))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.statusCode").value(404))
+        .andExpect(jsonPath("$.message").value("Verification record not found"));
+  }
+
+  @Test
+  public void testGetVerificationStatus_ZeroId() throws Exception {
+    // Arrange
+    Long userId = 0L;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification status retrieved");
+
+    when(verificationService.getVerificationStatus(userId)).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(get("/users/verification-status/{userId}", userId))
+        .andExpect(status().isOk());
+  }
+
+  // Update Verification Status Tests
+  @Test
+  public void testUpdateVerificationStatus_HappyCase_Approved() throws Exception {
+    // Arrange
+    Long userId = 1L;
+    Boolean isVerified = true;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification status updated successfully");
+    response.setUserId(userId);
+    response.setIsVerified(true);
+
+    when(verificationService.updateVerificationStatus(eq(userId), eq(isVerified)))
+        .thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(put("/owner/update-verification/{userId}", userId)
+        .param("isVerified", "true"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Verification status updated successfully"))
+        .andExpect(jsonPath("$.userId").value(userId))
+        .andExpect(jsonPath("$.isVerified").value(true));
+  }
+
+  @Test
+  public void testUpdateVerificationStatus_HappyCase_Rejected() throws Exception {
+    // Arrange
+    Long userId = 1L;
+    Boolean isVerified = false;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification status updated successfully");
+    response.setUserId(userId);
+    response.setIsVerified(false);
+
+    when(verificationService.updateVerificationStatus(eq(userId), eq(isVerified)))
+        .thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(put("/owner/update-verification/{userId}", userId)
+        .param("isVerified", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Verification status updated successfully"))
+        .andExpect(jsonPath("$.userId").value(userId))
+        .andExpect(jsonPath("$.isVerified").value(false));
+  }
+
+  @Test
+  public void testUpdateVerificationStatus_NotFound() throws Exception {
+    // Arrange
+    Long userId = 999L;
+    Boolean isVerified = true;
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(404);
+    response.setMessage("User not found");
+
+    when(verificationService.updateVerificationStatus(eq(userId), eq(isVerified)))
+        .thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(put("/owner/update-verification/{userId}", userId)
+        .param("isVerified", "true"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.statusCode").value(404))
+        .andExpect(jsonPath("$.message").value("User not found"));
+  }
+
+  @Test
+  public void testUpdateVerificationStatus_MissingParameter() throws Exception {
+    // Act & Assert
+    mockMvc.perform(put("/owner/update-verification/{userId}", 1L))
+        .andExpect(status().isBadRequest());
+  }
+
+  // Verify with FPT AI Tests
+  @Test
+  public void testVerifyWithFptAi_HappyCase() throws Exception {
+    // Arrange
+    VerificationDto request = new VerificationDto();
+    request.setUserId(1L);
+    request.setCitizenIdNumber("123456789012");
+    request.setFrontImageBase64("base64-encoded-front-image");
+    request.setBackImageBase64("base64-encoded-back-image");
+
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("FPT AI verification completed successfully");
+    response.setUserId(1L);
+    response.setIsVerified(true);
+
+    when(verificationService.verifyWithFptAi(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id-with-fptai")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("FPT AI verification completed successfully"))
+        .andExpect(jsonPath("$.userId").value(1L))
+        .andExpect(jsonPath("$.isVerified").value(true));
+  }
+
+  @Test
+  public void testVerifyWithFptAi_ErrorStatus() throws Exception {
+    // Arrange
+    VerificationDto request = new VerificationDto();
+    request.setUserId(1L);
+    request.setCitizenIdNumber("123456789012");
+
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(500);
+    response.setMessage("FPT AI service unavailable");
+
+    when(verificationService.verifyWithFptAi(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id-with-fptai")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.statusCode").value(500))
+        .andExpect(jsonPath("$.message").value("FPT AI service unavailable"));
+  }
+
+  @Test
+  public void testVerifyWithFptAi_InvalidData() throws Exception {
+    // Arrange
+    VerificationDto request = new VerificationDto();
+    request.setUserId(1L);
+
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(400);
+    response.setMessage("Missing required verification images");
+
+    when(verificationService.verifyWithFptAi(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id-with-fptai")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.statusCode").value(400))
+        .andExpect(jsonPath("$.message").value("Missing required verification images"));
+  }
+
+  @Test
+  public void testVerifyWithFptAi_NullRequest() throws Exception {
+    // Arrange
+    VerificationDto response = new VerificationDto();
+    response.setStatusCode(200);
+    response.setMessage("Verification processed");
+
+    when(verificationService.verifyWithFptAi(any(VerificationDto.class))).thenReturn(response);
+
+    // Act & Assert
+    mockMvc.perform(post("/users/verify-citizen-id-with-fptai")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
         .andExpect(status().isOk());
   }
 }

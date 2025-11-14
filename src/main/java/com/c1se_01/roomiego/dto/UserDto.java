@@ -33,6 +33,11 @@ public class UserDto {
     private String avatarUrl;
     private String job;
 
+    // Verification fields
+    private Boolean isVerified;
+    private String citizenIdNumber;
+    private LocalDateTime verificationDate;
+
     private List<User> usersList;
 
 }

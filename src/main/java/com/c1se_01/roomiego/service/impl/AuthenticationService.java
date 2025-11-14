@@ -34,7 +34,6 @@ public class AuthenticationService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
     public UserDto register(UserDto registrationRequest) {
         UserDto resp = new UserDto();
         try {
@@ -48,7 +47,7 @@ public class AuthenticationService {
             ourUser.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
             ourUser.setPhone(registrationRequest.getPhone());
             ourUser.setBio(registrationRequest.getBio());
-            
+
             // Convert String dob to Date
             if (registrationRequest.getDob() != null) {
                 try {
@@ -77,15 +76,11 @@ public class AuthenticationService {
         return resp;
     }
 
-
-
-
     public UserDto login(UserDto loginRequest) {
         UserDto response = new UserDto();
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
             // Lấy user từ database
             User user = userRepository.findByEmail(loginRequest.getEmail())
@@ -101,7 +96,7 @@ public class AuthenticationService {
             response.setRefreshToken(refreshToken);
             response.setExpirationTime("24Hrs");
             response.setMessage("Successfully Logged In");
-            
+
             // Set user information
             response.setId(user.getId());
             response.setEmail(user.getEmail());
@@ -121,13 +116,9 @@ public class AuthenticationService {
         return response;
     }
 
-
-
-
-
-    public UserDto refreshToken(UserDto refreshTokenReqiest){
+    public UserDto refreshToken(UserDto refreshTokenReqiest) {
         UserDto response = new UserDto();
-        try{
+        try {
             String ourEmail = jwtService.extractUsername(refreshTokenReqiest.getToken());
             User users = userRepository.findByEmail(ourEmail).orElseThrow();
             if (jwtService.isTokenValid(refreshTokenReqiest.getToken(), users)) {
@@ -141,13 +132,12 @@ public class AuthenticationService {
             response.setStatusCode(200);
             return response;
 
-        }catch (Exception e){
+        } catch (Exception e) {
             response.setStatusCode(500);
             response.setMessage(e.getMessage());
             return response;
         }
     }
-
 
     public UserDto getAllUsers() {
         UserDto reqRes = new UserDto();
@@ -187,6 +177,9 @@ public class AuthenticationService {
             userResponse.setDob(user.getDob());
             userResponse.setBio(user.getBio());
             userResponse.setCreatedAt(user.getCreatedAt());
+            userResponse.setIsVerified(user.getIsVerified());
+            userResponse.setCitizenIdNumber(user.getCitizenIdNumber());
+            userResponse.setVerificationDate(user.getVerificationDate());
 
             // Set the simplified user object
             reqRes.setUsersList(Collections.singletonList(userResponse));
@@ -200,8 +193,6 @@ public class AuthenticationService {
         }
         return reqRes;
     }
-
-
 
     public UserDto deleteUser(long userId) {
         UserDto reqRes = new UserDto();
@@ -232,8 +223,8 @@ public class AuthenticationService {
                 existingUser.setFullName(updatedUser.getFullName());
                 existingUser.setRole(updatedUser.getRole());
                 existingUser.setPhone(updatedUser.getPhone()); // ✅ Thêm số điện thoại
-                existingUser.setBio(updatedUser.getBio());     // ✅ Thêm tiểu sử (bio)
-                existingUser.setDob(updatedUser.getDob());    // ✅ Thêm ngày sinh (dob)
+                existingUser.setBio(updatedUser.getBio()); // ✅ Thêm tiểu sử (bio)
+                existingUser.setDob(updatedUser.getDob()); // ✅ Thêm ngày sinh (dob)
                 existingUser.setGender(updatedUser.getGender());
                 // Check if password is present in the request
                 if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
@@ -256,14 +247,13 @@ public class AuthenticationService {
         return reqRes;
     }
 
-
     public UserDto getMyInfo(String email) {
         UserDto reqRes = new UserDto();
         try {
             Optional<User> userOptional = userRepository.findByEmail(email);
             if (userOptional.isPresent()) {
                 User user = userOptional.get();
-                
+
                 // Set user information
                 reqRes.setId(user.getId());
                 reqRes.setEmail(user.getEmail());
@@ -274,7 +264,12 @@ public class AuthenticationService {
                 reqRes.setDob(user.getDob() != null ? user.getDob().toString() : null);
                 reqRes.setBio(user.getBio());
                 reqRes.setCreatedAt(user.getCreatedAt());
-                
+
+                // Set verification information
+                reqRes.setIsVerified(user.getIsVerified());
+                reqRes.setCitizenIdNumber(user.getCitizenIdNumber());
+                reqRes.setVerificationDate(user.getVerificationDate());
+
                 reqRes.setStatusCode(200);
                 reqRes.setMessage("successful");
             } else {
@@ -299,6 +294,9 @@ public class AuthenticationService {
                 response.setEmail(user.getEmail());
                 response.setFullName(user.getFullName());
                 response.setPhone(user.getPhone());
+                response.setIsVerified(user.getIsVerified());
+                response.setCitizenIdNumber(user.getCitizenIdNumber());
+                response.setVerificationDate(user.getVerificationDate());
                 response.setStatusCode(200);
                 response.setMessage("successful");
             } else {

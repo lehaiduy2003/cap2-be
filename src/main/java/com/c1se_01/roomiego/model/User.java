@@ -53,7 +53,7 @@ public class User implements UserDetails {
     @Column(length = 20)
     private String phone;
 
-    @Enumerated(EnumType.STRING )
+    @Enumerated(EnumType.STRING)
     private Role role;
 
     @Enumerated(EnumType.STRING)
@@ -68,6 +68,15 @@ public class User implements UserDetails {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "is_verified")
+    private Boolean isVerified = false;
+
+    @Column(name = "citizen_id_number", unique = true)
+    private String citizenIdNumber;
+
+    @Column(name = "verification_date")
+    private LocalDateTime verificationDate;
+
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<Room> rooms;
@@ -81,13 +90,13 @@ public class User implements UserDetails {
     private List<Roommate> roommates;
 
     // Quan hệ với Conversation (một user có thể có nhiều cuộc trò chuyện)
-//    @JsonIgnore
-//    @OneToMany(mappedBy = "user1", cascade = CascadeType.ALL)
-//    private List<Conversation> conversationsAsUser1 = new ArrayList<>();
-//
-//    @JsonIgnore
-//    @OneToMany(mappedBy = "user2", cascade = CascadeType.ALL)
-//    private List<Conversation> conversationsAsUser2 = new ArrayList<>();
+    // @JsonIgnore
+    // @OneToMany(mappedBy = "user1", cascade = CascadeType.ALL)
+    // private List<Conversation> conversationsAsUser1 = new ArrayList<>();
+    //
+    // @JsonIgnore
+    // @OneToMany(mappedBy = "user2", cascade = CascadeType.ALL)
+    // private List<Conversation> conversationsAsUser2 = new ArrayList<>();
     @OneToMany(mappedBy = "renter", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<ViewRequest> viewRequests;
