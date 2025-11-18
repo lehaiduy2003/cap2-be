@@ -1,5 +1,6 @@
 package com.c1se_01.roomiego.controller;
 
+import com.c1se_01.roomiego.dto.ConversationSummaryDTO;
 import com.c1se_01.roomiego.dto.MessageDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.model.Message;
@@ -122,17 +123,6 @@ public class MessageControllerTest {
         .andExpect(content().string("Logged out successfully"));
   }
 
-  // @Test
-  // @WithMockUser
-  // void findByUsername_HappyCase() throws Exception {
-  //   List<User> users = Arrays.asList(user);
-  //   when(userService.findByFullName("test")).thenReturn(users);
-
-  //   mockMvc.perform(get("/messages/search").param("username", "test"))
-  //       .andExpect(status().isOk())
-  //       .andExpect(jsonPath("$[0].id").value(1L));
-  // }
-
   @Test
   @WithMockUser
   void findByUsername_NoUsersFound() throws Exception {
@@ -195,6 +185,40 @@ public class MessageControllerTest {
     mockMvc.perform(get("/messages/api/messages/history/user1/user2"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isEmpty());
+  }
+
+  @Test
+  @WithMockUser
+  void getConversations_HappyCase() throws Exception {
+    List<ConversationSummaryDTO> conversations = Arrays.asList(new ConversationSummaryDTO());
+    when(messageService.getConversationsForUser(1L)).thenReturn(conversations);
+
+    mockMvc.perform(get("/messages/api/messages/conversations/1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1));
+  }
+
+  @Test
+  @WithMockUser
+  void getConversationMessages_HappyCase() throws Exception {
+    List<Message> messages = Arrays.asList(message);
+    when(messageService.getMessagesByConversationId(1L)).thenReturn(messages);
+
+    mockMvc.perform(get("/messages/conversation/1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(1L));
+  }
+
+  @Test
+  @WithMockUser
+  void getOrCreateConversation_HappyCase() throws Exception {
+    List<Message> messages = Arrays.asList(message);
+    when(messageService.getOrCreateConversationMessages(1L, 2L)).thenReturn(messages);
+
+    mockMvc.perform(get("/messages/conversation/1/2"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(1L));
   }
 
 }

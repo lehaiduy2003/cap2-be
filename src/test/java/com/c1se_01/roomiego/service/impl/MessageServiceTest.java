@@ -1,5 +1,6 @@
 package com.c1se_01.roomiego.service.impl;
 
+import com.c1se_01.roomiego.dto.ConversationSummaryDTO;
 import com.c1se_01.roomiego.dto.MessageDto;
 import com.c1se_01.roomiego.dto.SendMessageRequest;
 import com.c1se_01.roomiego.enums.MessageType;
@@ -292,5 +293,106 @@ class MessageServiceTest {
 
     assertEquals(1, result.size());
     verify(messageRepository, times(1)).findByType(MessageType.PRIVATE);
+  }
+
+  // Tests for saveMessageAndReturn
+  @Test
+  void saveMessageAndReturn_PrivateMessageWithReceiver_Success() {
+    when(conversationRepository.findByUser1IdAndUser2Id(1L, 2L)).thenReturn(Optional.of(conversation));
+    when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    Message result = messageService.saveMessageAndReturn(messageDto);
+
+    assertNotNull(result);
+    assertEquals("Test message", result.getMessage());
+    verify(messageRepository, times(1)).save(any(Message.class));
+  }
+
+  @Test
+  void saveMessageAndReturn_PrivateMessageWithoutReceiver_ThrowsException() {
+    messageDto.setReceiverName(null);
+
+    assertThrows(IllegalArgumentException.class, () -> messageService.saveMessageAndReturn(messageDto));
+  }
+
+  // Tests for getConversationsForUser
+  @Test
+  void getConversationsForUser_ReturnsConversationSummaries() {
+    User user3 = new User();
+    user3.setId(3L);
+    user3.setEmail("user3@example.com");
+    user3.setFullName("User Three");
+    user3.setPhone("123456789");
+    user3.setRole(null);
+
+    Conversation conversation2 = new Conversation();
+    conversation2.setId(2L);
+    conversation2.setUser1(user1);
+    conversation2.setUser2(user3);
+    conversation2.setCreatedAt(new Date());
+
+    List<Conversation> conversations = List.of(conversation, conversation2);
+    when(conversationRepository.findAllByUserId(1L)).thenReturn(conversations);
+
+    when(messageRepository.findTopByConversationIdOrderByTimestampDesc(1L)).thenReturn(message);
+
+    Message lastMessage2 = new Message();
+    lastMessage2.setMessage("Last message 2");
+    lastMessage2.setTimestamp(System.currentTimeMillis() + 1000);
+    when(messageRepository.findTopByConversationIdOrderByTimestampDesc(2L)).thenReturn(lastMessage2);
+
+    List<ConversationSummaryDTO> result = messageService.getConversationsForUser(1L);
+
+    assertEquals(2, result.size());
+    ConversationSummaryDTO dto1 = result.get(0);
+    assertEquals(1L, dto1.getConversationId());
+    assertEquals(2L, dto1.getPartnerId());
+    assertEquals("user2@example.com", dto1.getPartnerEmail());
+
+    ConversationSummaryDTO dto2 = result.get(1);
+    assertEquals(2L, dto2.getConversationId());
+    assertEquals(3L, dto2.getPartnerId());
+    assertEquals("user3@example.com", dto2.getPartnerEmail());
+  }
+
+  // Tests for getMessagesByConversationId
+  @Test
+  void getMessagesByConversationId_ReturnsMessages() {
+    List<Message> messages = List.of(message);
+    when(messageRepository.findByConversationIdOrderByTimestampAsc(1L)).thenReturn(messages);
+
+    List<Message> result = messageService.getMessagesByConversationId(1L);
+
+    assertEquals(1, result.size());
+    assertEquals(message, result.get(0));
+  }
+
+  // Tests for getOrCreateConversationMessages
+  @Test
+  void getOrCreateConversationMessages_ConversationExists_ReturnsMessages() {
+    List<Message> messages = List.of(message);
+    when(conversationRepository.findByUser1IdAndUser2Id(1L, 2L)).thenReturn(Optional.of(conversation));
+    when(messageRepository.findByConversationIdOrderByTimestampAsc(1L)).thenReturn(messages);
+
+    List<Message> result = messageService.getOrCreateConversationMessages(1L, 2L);
+
+    assertEquals(1, result.size());
+    assertEquals(message, result.get(0));
+  }
+
+  @Test
+  void getOrCreateConversationMessages_ConversationNotExists_CreatesAndReturnsMessages() {
+    when(conversationRepository.findByUser1IdAndUser2Id(1L, 2L)).thenReturn(Optional.empty());
+    when(userRepository.findById(1L)).thenReturn(Optional.of(user1));
+    when(userRepository.findById(2L)).thenReturn(Optional.of(user2));
+    when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
+
+    List<Message> messages = List.of(message);
+    when(messageRepository.findByConversationIdOrderByTimestampAsc(1L)).thenReturn(messages);
+
+    List<Message> result = messageService.getOrCreateConversationMessages(1L, 2L);
+
+    assertEquals(1, result.size());
+    verify(conversationRepository, times(1)).save(any(Conversation.class));
   }
 }

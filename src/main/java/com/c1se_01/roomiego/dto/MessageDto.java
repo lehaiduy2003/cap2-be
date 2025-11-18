@@ -12,6 +12,8 @@ import lombok.ToString;
 @Data
 @ToString
 public class MessageDto {
+    private Long id;
+
     private String senderName;
     private Long senderId;
 
@@ -29,4 +31,6 @@ public class MessageDto {
     private String mediaType;
 
     private MessageType type;
+
+    private Long timestamp;
 }

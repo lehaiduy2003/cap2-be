@@ -9,6 +9,7 @@ import com.c1se_01.roomiego.service.MessageService;
 import com.c1se_01.roomiego.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -21,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/messages")
 @RequiredArgsConstructor
+@Slf4j
 public class MessageController {
     private final MessageService messageService;
     private final SimpMessagingTemplate simpMessagingTemplate;
@@ -73,14 +75,59 @@ public class MessageController {
 
     @MessageMapping("/private-message")
     public void privateMessage(MessageDto messageDto) {
+        log.info("Received private message from {} to {}", messageDto.getSenderName(), messageDto.getReceiverName());
+
+        // Save the message first and get the saved message with conversationId
+        Message savedMessage = messageService.saveMessageAndReturn(messageDto);
+
+        log.info("Message saved with conversationId: {}", savedMessage.getConversationId());
+
+        // Create response DTO with id, timestamp and conversationId from saved message
+        MessageDto responseDto = new MessageDto();
+        responseDto.setId(savedMessage.getId()); // Include the message ID
+        responseDto.setTimestamp(savedMessage.getTimestamp()); // Include the timestamp
+        responseDto.setSenderName(messageDto.getSenderName());
+        responseDto.setSenderId(messageDto.getSenderId());
+        responseDto.setReceiverName(messageDto.getReceiverName());
+        responseDto.setReceiverId(messageDto.getReceiverId());
+        responseDto.setMessage(messageDto.getMessage());
+        responseDto.setMedia(messageDto.getMedia());
+        responseDto.setMediaType(messageDto.getMediaType());
+        responseDto.setStatus(messageDto.getStatus());
+        responseDto.setType(messageDto.getType());
+        responseDto.setConversationId(
+                savedMessage.getConversationId() != null ? savedMessage.getConversationId().toString() : null);
+
+        // Send to receiver via WebSocket
         String receiver = messageDto.getReceiverName();
-        simpMessagingTemplate.convertAndSendToUser(receiver, "/private", messageDto);
-        messageService.saveMessage(messageDto);
+        log.info("Sending message to receiver: {} at /user/{}/private", receiver, receiver);
+        simpMessagingTemplate.convertAndSendToUser(receiver, "/private", responseDto);
+
+        // Also send back to sender with the saved ID and timestamp
+        String sender = messageDto.getSenderName();
+        log.info("Sending message back to sender: {} at /user/{}/private", sender, sender);
+        simpMessagingTemplate.convertAndSendToUser(sender, "/private", responseDto);
+
+        log.info("Message broadcasting completed");
     }
 
     @GetMapping("/api/messages/conversations/{userId}")
     public ResponseEntity<List<ConversationSummaryDTO>> getConversations(@PathVariable Long userId) {
         List<ConversationSummaryDTO> conversations = messageService.getConversationsForUser(userId);
         return ResponseEntity.ok(conversations);
+    }
+
+    @GetMapping("/conversation/{conversationId}")
+    public ResponseEntity<List<Message>> getConversationMessages(@PathVariable Long conversationId) {
+        List<Message> messages = messageService.getMessagesByConversationId(conversationId);
+        return ResponseEntity.ok(messages);
+    }
+
+    @GetMapping("/conversation/{userId1}/{userId2}")
+    public ResponseEntity<List<Message>> getOrCreateConversation(
+            @PathVariable Long userId1,
+            @PathVariable Long userId2) {
+        List<Message> messages = messageService.getOrCreateConversationMessages(userId1, userId2);
+        return ResponseEntity.ok(messages);
     }
 }

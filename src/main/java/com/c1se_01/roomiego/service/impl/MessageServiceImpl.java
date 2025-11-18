@@ -38,15 +38,15 @@ public class MessageServiceImpl implements MessageService {
         if (parts.length < 3) {
             throw new IllegalArgumentException("Invalid conversation ID format");
         }
-        
+
         Long user1Id = Long.parseLong(parts[1]);
         // Handle case when user2Id is undefined
         if ("undefined".equals(parts[2])) {
             throw new IllegalArgumentException("User2 ID is required for private messages");
         }
-        
+
         Long user2Id = Long.parseLong(parts[2]);
-        
+
         // Find or create conversation
         Conversation conversation = conversationRepository.findByUser1IdAndUser2Id(user1Id, user2Id)
                 .orElseGet(() -> {
@@ -54,7 +54,7 @@ public class MessageServiceImpl implements MessageService {
                             .orElseThrow(() -> new NotFoundException("User 1 not found"));
                     User user2 = userRepository.findById(user2Id)
                             .orElseThrow(() -> new NotFoundException("User 2 not found"));
-                    
+
                     Conversation newConversation = new Conversation();
                     newConversation.setUser1(user1);
                     newConversation.setUser2(user2);
@@ -75,9 +75,8 @@ public class MessageServiceImpl implements MessageService {
         User sender = userRepository.findById(request.getSenderId())
                 .orElseThrow(() -> new NotFoundException("Sender not found"));
         message.setSenderName(sender.getEmail());
-        
-        User receiver = request.getSenderId().equals(user1Id) ? 
-                conversation.getUser2() : conversation.getUser1();
+
+        User receiver = request.getSenderId().equals(user1Id) ? conversation.getUser2() : conversation.getUser1();
         message.setReceiverName(receiver.getEmail());
         message.setReceiverId(receiver.getId());
 
@@ -89,11 +88,12 @@ public class MessageServiceImpl implements MessageService {
         return savedMessage;
     }
 
-//    @Override
-//    public List<Message> getMessages(Long conversationId) {
-//        Conversation conversation = conversationRepository.findById(conversationId).orElseThrow();
-//        return messageRepository.findByConversationOrderBySentAt(conversation);
-//    }
+    // @Override
+    // public List<Message> getMessages(Long conversationId) {
+    // Conversation conversation =
+    // conversationRepository.findById(conversationId).orElseThrow();
+    // return messageRepository.findByConversationOrderBySentAt(conversation);
+    // }
 
     @Override
     public void saveMessage(MessageDto messageDto) {
@@ -125,7 +125,8 @@ public class MessageServiceImpl implements MessageService {
             resolvedReceiverId = resolveUserId(messageDto.getReceiverName());
             message.setReceiverId(resolvedReceiverId);
         }
-        log.info("Saving message from {} ({}) to {} ({})", messageDto.getSenderName(), resolvedSenderId, messageDto.getReceiverName(), resolvedReceiverId);
+        log.info("Saving message from {} ({}) to {} ({})", messageDto.getSenderName(), resolvedSenderId,
+                messageDto.getReceiverName(), resolvedReceiverId);
         String conversationId = messageDto.getConversationId();
         if (resolvedSenderId != null && resolvedReceiverId != null) {
             final Long senderIdFinal = resolvedSenderId;
@@ -148,10 +149,76 @@ public class MessageServiceImpl implements MessageService {
             try {
                 Long numericConversationId = Long.parseLong(conversationId);
                 message.setConversationId(numericConversationId);
-            } catch (NumberFormatException ignored) { }
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         messageRepository.save(message);
+    }
+
+    @Override
+    public Message saveMessageAndReturn(MessageDto messageDto) {
+        // Validate message type and receiver
+        if (messageDto.getType() == MessageType.PRIVATE && messageDto.getReceiverName() == null) {
+            throw new IllegalArgumentException("Receiver name cannot be null for private messages");
+        }
+
+        // Save to the database
+        Message message = new Message();
+        message.setSenderId(messageDto.getSenderId());
+        message.setSenderName(messageDto.getSenderName());
+        message.setReceiverId(messageDto.getReceiverId());
+        message.setReceiverName(messageDto.getReceiverName());
+        message.setMessage(messageDto.getMessage());
+        message.setMedia(messageDto.getMedia());
+        message.setMediaType(messageDto.getMediaType());
+        message.setStatus(messageDto.getStatus());
+        message.setTimestamp(System.currentTimeMillis());
+        message.setType(messageDto.getType());
+
+        Long resolvedSenderId = messageDto.getSenderId();
+        Long resolvedReceiverId = messageDto.getReceiverId();
+        if (resolvedSenderId == null && messageDto.getSenderName() != null) {
+            resolvedSenderId = resolveUserId(messageDto.getSenderName());
+            message.setSenderId(resolvedSenderId);
+        }
+        if (resolvedReceiverId == null && messageDto.getReceiverName() != null) {
+            resolvedReceiverId = resolveUserId(messageDto.getReceiverName());
+            message.setReceiverId(resolvedReceiverId);
+        }
+
+        log.info("Saving message from {} ({}) to {} ({})", messageDto.getSenderName(), resolvedSenderId,
+                messageDto.getReceiverName(), resolvedReceiverId);
+
+        String conversationId = messageDto.getConversationId();
+        if (resolvedSenderId != null && resolvedReceiverId != null) {
+            final Long senderIdFinal = resolvedSenderId;
+            final Long receiverIdFinal = resolvedReceiverId;
+            Conversation conversation = conversationRepository
+                    .findByUser1IdAndUser2Id(senderIdFinal, receiverIdFinal)
+                    .orElseGet(() -> {
+                        User sender = userRepository.findById(senderIdFinal)
+                                .orElseThrow(() -> new NotFoundException("Sender not found"));
+                        User receiver = userRepository.findById(receiverIdFinal)
+                                .orElseThrow(() -> new NotFoundException("Receiver not found"));
+                        Conversation newConversation = new Conversation();
+                        newConversation.setUser1(sender);
+                        newConversation.setUser2(receiver);
+                        newConversation.setCreatedAt(new Date());
+                        log.info("Creating new conversation between {} and {}", senderIdFinal, receiverIdFinal);
+                        return conversationRepository.save(newConversation);
+                    });
+            message.setConversationId(conversation.getId());
+            log.info("Message assigned to conversation ID: {}", conversation.getId());
+        } else if (conversationId != null) {
+            try {
+                Long numericConversationId = Long.parseLong(conversationId);
+                message.setConversationId(numericConversationId);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return messageRepository.save(message);
     }
 
     @Override
@@ -192,12 +259,38 @@ public class MessageServiceImpl implements MessageService {
                     Long lastTimestamp = lastMessage != null
                             ? lastMessage.getTimestamp()
                             : conversation.getCreatedAt() != null
-                            ? conversation.getCreatedAt().getTime()
-                            : new Date().getTime();
+                                    ? conversation.getCreatedAt().getTime()
+                                    : new Date().getTime();
                     dto.setLastTimestamp(lastTimestamp);
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Message> getMessagesByConversationId(Long conversationId) {
+        return messageRepository.findByConversationIdOrderByTimestampAsc(conversationId);
+    }
+
+    @Override
+    public List<Message> getOrCreateConversationMessages(Long userId1, Long userId2) {
+        // Find or create conversation
+        Conversation conversation = conversationRepository.findByUser1IdAndUser2Id(userId1, userId2)
+                .orElseGet(() -> {
+                    User user1 = userRepository.findById(userId1)
+                            .orElseThrow(() -> new NotFoundException("User 1 not found"));
+                    User user2 = userRepository.findById(userId2)
+                            .orElseThrow(() -> new NotFoundException("User 2 not found"));
+
+                    Conversation newConversation = new Conversation();
+                    newConversation.setUser1(user1);
+                    newConversation.setUser2(user2);
+                    newConversation.setCreatedAt(new Date());
+                    return conversationRepository.save(newConversation);
+                });
+
+        // Return messages for this conversation
+        return messageRepository.findByConversationIdOrderByTimestampAsc(conversation.getId());
     }
 
     private Long resolveUserId(String identifier) {

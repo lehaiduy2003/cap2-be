@@ -11,13 +11,19 @@ import java.util.List;
 public interface MessageService {
     Message sendMessage(SendMessageRequest request);
 
-//    List<Message> getMessages(Long conversationId);
+    // List<Message> getMessages(Long conversationId);
 
     void saveMessage(MessageDto messageDto);
+
+    Message saveMessageAndReturn(MessageDto messageDto);
 
     List<Message> findChatHistoryBetweenUsers(String user1, String user2);
 
     List<Message> findByType(MessageType type);
 
     List<ConversationSummaryDTO> getConversationsForUser(Long userId);
+
+    List<Message> getMessagesByConversationId(Long conversationId);
+
+    List<Message> getOrCreateConversationMessages(Long userId1, Long userId2);
 }
