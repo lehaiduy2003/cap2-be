@@ -77,9 +77,8 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomDTO> getAllRooms(FilterParam filterParam) {
-        log.info(filterParam.toString());
         Specification<Room> spec = RoomSpecification.buildSpecification(filterParam);
-        log.info(spec.toString());
+        log.debug("Room Specification: {}", spec);
         List<Room> rooms = roomRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
         if (rooms.isEmpty()) {
             throw new NotFoundException("Không có phòng nào được tìm thấy");

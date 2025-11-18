@@ -1,0 +1,1 @@
+Drop TABLE IF EXISTS accounts, accounts_seq, marker, payments, contracts;

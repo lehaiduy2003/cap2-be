@@ -73,9 +73,6 @@ public class Room {
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
     private List<RoomImage> roomImages;
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
-    private List<Contract> contracts;
-
     @Column(name = "city")
     private String city;
 
