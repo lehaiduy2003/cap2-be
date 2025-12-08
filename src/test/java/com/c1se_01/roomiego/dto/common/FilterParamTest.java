@@ -1,6 +1,8 @@
 package com.c1se_01.roomiego.dto.common;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Sort.Direction;
+
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 
@@ -168,7 +170,7 @@ class FilterParamTest {
     assertEquals(0, fp.getPage());
     assertEquals(10, fp.getSize());
     assertEquals("id", fp.getSort());
-    assertEquals(javax.swing.SortOrder.ASCENDING, fp.getOrder());
+    assertEquals(Direction.ASC, fp.getOrder());
     assertNull(fp.getFilter());
     assertNull(fp.getConditions());
   }

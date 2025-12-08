@@ -219,9 +219,7 @@ public class AuthenticationService {
             Optional<User> userOptional = userRepository.findById(userId);
             if (userOptional.isPresent()) {
                 User existingUser = userOptional.get();
-                existingUser.setEmail(updatedUser.getEmail());
                 existingUser.setFullName(updatedUser.getFullName());
-                existingUser.setRole(updatedUser.getRole());
                 existingUser.setPhone(updatedUser.getPhone()); // ✅ Thêm số điện thoại
                 existingUser.setBio(updatedUser.getBio()); // ✅ Thêm tiểu sử (bio)
                 existingUser.setDob(updatedUser.getDob()); // ✅ Thêm ngày sinh (dob)

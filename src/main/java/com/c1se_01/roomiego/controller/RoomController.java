@@ -55,6 +55,8 @@ public class RoomController {
             @RequestParam(value = "ward", required = false) String ward,
             @RequestParam(value = "street", required = false) String street,
             @RequestParam(value = "addressDetails", required = false) String addressDetails,
+            @RequestParam(value = "latitude", required = false) Double latitude,
+            @RequestParam(value = "longitude", required = false) Double longitude,
             @RequestParam(value = "images", required = false) MultipartFile[] images) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -64,7 +66,8 @@ public class RoomController {
         // Convert string values to appropriate types
         Float roomSizeValue = roomSize != null && !roomSize.isEmpty() ? Float.parseFloat(roomSize) : null;
         Integer bedroomsValue = numBedrooms != null && !numBedrooms.isEmpty() ? Integer.parseInt(numBedrooms) : null;
-        Integer bathroomsValue = numBathrooms != null && !numBathrooms.isEmpty() ? Integer.parseInt(numBathrooms) : null;
+        Integer bathroomsValue = numBathrooms != null && !numBathrooms.isEmpty() ? Integer.parseInt(numBathrooms)
+                : null;
         java.math.BigDecimal priceValue = price != null && !price.isEmpty() ? new java.math.BigDecimal(price) : null;
 
         // Create RoomDTO object
@@ -84,6 +87,8 @@ public class RoomController {
         roomDTO.setWard(ward);
         roomDTO.setStreet(street);
         roomDTO.setAddressDetails(addressDetails);
+        roomDTO.setLatitude(latitude);
+        roomDTO.setLongitude(longitude);
 
         // Handle multiple image uploads
         List<String> imageUrls = new ArrayList<>();
@@ -105,8 +110,7 @@ public class RoomController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<RoomDTO>>> getAllRooms(
-        FilterParam filterParam
-        ) {
+            FilterParam filterParam) {
         List<RoomDTO> rooms = roomService.getAllRooms(filterParam);
         return ResponseEntity.ok(new ApiResponse<>(200, "Danh sách phòng", rooms));
     }
@@ -157,4 +161,3 @@ public class RoomController {
     }
 
 }
-

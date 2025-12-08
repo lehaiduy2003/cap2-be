@@ -16,7 +16,12 @@ import com.c1se_01.roomiego.service.RoomService;
 import com.c1se_01.roomiego.service.specification.RoomSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -29,7 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
-    private final RoomImageRepository roomImageRepository; // Tiêm RoomImageRepository vào đây
+    private final RoomImageRepository roomImageRepository;
 
     private final UserRepository userRepository;
     private final GoogleMapsService googleMapsService;
@@ -77,12 +82,19 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomDTO> getAllRooms(FilterParam filterParam) {
+        // Build sort
+        Direction direction = filterParam.getOrder() == Direction.ASC
+                ? Direction.ASC
+                : Direction.DESC;
+        Sort sort = Sort.by(direction, filterParam.getSort());
+
+        Pageable pageable = PageRequest.of(filterParam.getPage(), filterParam.getSize(), sort);
+
         Specification<Room> spec = RoomSpecification.buildSpecification(filterParam);
         log.debug("Room Specification: {}", spec);
-        List<Room> rooms = roomRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
-        if (rooms.isEmpty()) {
-            throw new NotFoundException("Không có phòng nào được tìm thấy");
-        }
+        Page<Room> roomPage = roomRepository.findAll(spec, pageable);
+        List<Room> rooms = roomPage.getContent();
+
         return rooms.stream().map(roomMapper::toDTO).collect(Collectors.toList());
     }
 

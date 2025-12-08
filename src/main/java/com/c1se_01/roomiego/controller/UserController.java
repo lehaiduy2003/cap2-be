@@ -58,6 +58,11 @@ public class UserController {
         return ResponseEntity.ok(authenticationService.updateUser(userId, reqres));
     }
 
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<UserDto> updateUserById(@PathVariable Integer userId, @RequestBody User reqres) {
+        return ResponseEntity.ok(authenticationService.updateUser(userId, reqres));
+    }
+
     @GetMapping("/renterowner/get-profile")
     public ResponseEntity<UserDto> getMyProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

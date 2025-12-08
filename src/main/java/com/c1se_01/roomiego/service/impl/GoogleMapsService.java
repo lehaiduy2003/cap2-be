@@ -138,7 +138,6 @@ public class GoogleMapsService {
 
         // Add ", Vietnam" if not present
         if (!normalized.toLowerCase().contains("vietnam") && !normalized.toLowerCase().contains("việt nam")) {
-            variations.add(normalized + ", Vietnam");
             variations.add(normalized + ", Việt Nam");
         }
 

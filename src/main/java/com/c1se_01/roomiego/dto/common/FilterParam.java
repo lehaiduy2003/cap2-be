@@ -4,11 +4,12 @@ import com.c1se_01.roomiego.annotation.ValidFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
-import javax.swing.SortOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.springframework.data.domain.Sort.Direction;
 
 @Data
 public class FilterParam {
@@ -16,7 +17,7 @@ public class FilterParam {
     private Integer page = 0;
     private Integer size = 10;
     private String sort = "id";
-    private SortOrder order = SortOrder.ASCENDING;
+    private Direction order = Direction.ASC;
     @ValidFilter
     private String filter;
     @JsonIgnore()
@@ -34,11 +35,13 @@ public class FilterParam {
 
     private List<FilterCondition> parseFilter(String filter) {
         List<FilterCondition> list = new ArrayList<>();
-        if (filter == null || filter.isBlank()) return list;
+        if (filter == null || filter.isBlank())
+            return list;
         String[] parts = filter.split(",");
         for (String part : parts) {
             part = part.trim();
-            if (part.isEmpty()) continue;
+            if (part.isEmpty())
+                continue;
 
             Matcher m = TOKEN_PATTERN.matcher(part);
             if (m.matches()) {

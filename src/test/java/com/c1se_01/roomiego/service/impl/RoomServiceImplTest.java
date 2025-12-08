@@ -19,7 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Arrays;
@@ -223,9 +225,10 @@ class RoomServiceImplTest {
     // Given
     FilterParam filterParam = new FilterParam();
     List<Room> rooms = Arrays.asList(new Room(), new Room());
+    Page<Room> roomPage = new PageImpl<>(rooms);
     List<RoomDTO> expectedDTOs = Arrays.asList(new RoomDTO(), new RoomDTO());
 
-    when(roomRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(rooms);
+    when(roomRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(roomPage);
     when(roomMapper.toDTO(any(Room.class))).thenReturn(new RoomDTO());
 
     // When
@@ -233,18 +236,22 @@ class RoomServiceImplTest {
 
     // Then
     assertEquals(expectedDTOs.size(), result.size());
-    verify(roomRepository).findAll(any(Specification.class), any(Sort.class));
+    verify(roomRepository).findAll(any(Specification.class), any(Pageable.class));
   }
 
   @Test
   void getAllRooms_NoRoomsFound() {
     // Given
     FilterParam filterParam = new FilterParam();
-    when(roomRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(Collections.emptyList());
+    Page<Room> emptyPage = new PageImpl<>(Collections.emptyList());
+    when(roomRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);
 
-    // When & Then
-    assertThrows(NotFoundException.class, () -> roomService.getAllRooms(filterParam));
-    verify(roomRepository).findAll(any(Specification.class), any(Sort.class));
+    // When
+    List<RoomDTO> result = roomService.getAllRooms(filterParam);
+
+    // Then
+    assertTrue(result.isEmpty());
+    verify(roomRepository).findAll(any(Specification.class), any(Pageable.class));
   }
 
   @Test
