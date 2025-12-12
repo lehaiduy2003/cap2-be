@@ -5,7 +5,6 @@ import com.c1se_01.roomiego.dto.ApiResponse;
 import com.c1se_01.roomiego.dto.RoommateDTO;
 import com.c1se_01.roomiego.dto.RoommateResponseDTO;
 import com.c1se_01.roomiego.service.RoommateService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
