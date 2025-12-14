@@ -16,6 +16,7 @@ import com.c1se_01.roomiego.service.UserProfileService;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -176,13 +177,11 @@ public class McpToolController {
    * - fromPropertyId: Source property ID (optional if fromAddress provided)
    * - toPropertyId: Destination property ID (optional if toAddress provided)
    * - fromAddress: Source address (optional if fromPropertyId provided)
-   * - toAddress: Destination address (optional if toPropertyId provided)
-   * - fromLat: Source latitude (optional)
-   * - fromLng: Source longitude (optional)
-   * - toLat: Destination latitude (optional)
-   * - toLng: Destination longitude (optional)
+   * - toAddress: Destination address (optional if toAddress provided)
+   * - mode: Travel mode - "driving" (default), "walking", "bicycling", "transit"
    *
-   * @return Distance information including kilometers and meters
+   * @return Distance information including kilometers, meters, duration, and
+   *         travel mode
    */
   @GetMapping("/distance")
   public ResponseEntity<?> calculateDistance(
@@ -190,77 +189,107 @@ public class McpToolController {
       @RequestParam(required = false) Long toPropertyId,
       @RequestParam(required = false) String fromAddress,
       @RequestParam(required = false) String toAddress,
-      @RequestParam(required = false) Double fromLat,
-      @RequestParam(required = false) Double fromLng,
-      @RequestParam(required = false) Double toLat,
-      @RequestParam(required = false) Double toLng) {
-
-    log.info("[MCP Tool] Calculating distance - From Property: {}, To Property: {}, From Address: {}, To Address: {}",
-        fromPropertyId, toPropertyId, fromAddress, toAddress);
-
+      @RequestParam(required = false, defaultValue = "driving") String mode) {
     try {
-      Double startLat = fromLat;
-      Double startLng = fromLng;
-      Double endLat = toLat;
-      Double endLng = toLng;
 
-      // Get start coordinates
-      if (startLat == null || startLng == null) {
-        if (fromPropertyId != null) {
-          RoomDTO fromProperty = roomService.getRoomById(fromPropertyId);
-          if (fromProperty == null) {
-            return ResponseEntity.badRequest().body("Source property not found");
-          }
-          startLat = fromProperty.getLatitude();
-          startLng = fromProperty.getLongitude();
-        } else if (fromAddress != null && !fromAddress.isEmpty()) {
-          var fromLocation = googleMapsService.geocodeAddress(fromAddress);
-          if (fromLocation == null) {
-            return ResponseEntity.badRequest().body("Could not geocode source address");
-          }
-          startLat = fromLocation.getLatitude();
-          startLng = fromLocation.getLongitude();
-        } else {
-          return ResponseEntity.badRequest().body("Must provide fromPropertyId, fromAddress, or fromLat/fromLng");
+      log.info(
+          "[MCP Tool] Calculating distance - From Property: {}, To Property: {}, From Address: {}, To Address: {}, Mode: {}",
+          fromPropertyId, toPropertyId, fromAddress, toAddress, mode);
+
+      String originAddress = null;
+      String destinationAddress = null;
+      Double startLat = null;
+      Double startLng = null;
+      Double endLat = null;
+      Double endLng = null;
+
+      // Get origin - geocode address to coordinates for accuracy
+      if (fromAddress != null && !fromAddress.isEmpty()) {
+        originAddress = fromAddress;
+
+        // Geocode to get accurate coordinates
+        var fromLocation = googleMapsService.geocodeAddress(originAddress);
+        if (fromLocation == null) {
+          return ResponseEntity.badRequest().body("Could not geocode source address");
         }
+        startLat = fromLocation.getLatitude();
+        startLng = fromLocation.getLongitude();
+        originAddress = fromLocation.getFormattedAddress(); // Use geocoded address
+      } else if (fromPropertyId != null) {
+        RoomDTO fromProperty = roomService.getRoomById(fromPropertyId);
+        if (fromProperty == null) {
+          return ResponseEntity.badRequest().body("Source property not found");
+        }
+        startLat = fromProperty.getLatitude();
+        startLng = fromProperty.getLongitude();
+        originAddress = buildFullAddress(fromProperty);
+      } else {
+        return ResponseEntity.badRequest().body("Must provide fromPropertyId or fromAddress");
       }
 
-      // Get end coordinates
-      if (endLat == null || endLng == null) {
-        if (toPropertyId != null) {
-          RoomDTO toProperty = roomService.getRoomById(toPropertyId);
-          if (toProperty == null) {
-            return ResponseEntity.badRequest().body("Destination property not found");
-          }
-          endLat = toProperty.getLatitude();
-          endLng = toProperty.getLongitude();
-        } else if (toAddress != null && !toAddress.isEmpty()) {
-          var toLocation = googleMapsService.geocodeAddress(toAddress);
-          if (toLocation == null) {
-            return ResponseEntity.badRequest().body("Could not geocode destination address");
-          }
-          endLat = toLocation.getLatitude();
-          endLng = toLocation.getLongitude();
-        } else {
-          return ResponseEntity.badRequest().body("Must provide toPropertyId, toAddress, or toLat/toLng");
+      // Get destination - geocode address to coordinates for accuracy
+      if (toAddress != null && !toAddress.isEmpty()) {
+        destinationAddress = toAddress;
+
+        // Add "Đà Nẵng" if not present to help with geocoding accuracy
+        if (!toAddress.toLowerCase().contains("đà nẵng") &&
+            !toAddress.toLowerCase().contains("da nang")) {
+          destinationAddress = toAddress + ", Đà Nẵng";
         }
+
+        // Geocode to get accurate coordinates
+        var toLocation = googleMapsService.geocodeAddress(destinationAddress);
+        if (toLocation == null) {
+          return ResponseEntity.badRequest().body("Could not geocode destination address");
+        }
+        endLat = toLocation.getLatitude();
+        endLng = toLocation.getLongitude();
+        destinationAddress = toLocation.getFormattedAddress(); // Use geocoded address
+      } else if (toPropertyId != null) {
+        RoomDTO toProperty = roomService.getRoomById(toPropertyId);
+        if (toProperty == null) {
+          return ResponseEntity.badRequest().body("Destination property not found");
+        }
+        endLat = toProperty.getLatitude();
+        endLng = toProperty.getLongitude();
+        destinationAddress = buildFullAddress(toProperty);
+      } else {
+        return ResponseEntity.badRequest().body("Must provide toPropertyId or toAddress");
       }
 
-      // Validate coordinates
+      // Validate coordinates before calling Distance Matrix API
       if (startLat == null || startLng == null || endLat == null || endLng == null) {
-        return ResponseEntity.badRequest().body("Invalid coordinates");
+        return ResponseEntity.badRequest().body("Could not determine coordinates for one or both locations");
       }
 
-      // Calculate distance using Haversine formula
-      double distance = calculateHaversineDistance(startLat, startLng, endLat, endLng);
+      // Use Google Maps Distance Matrix API with coordinates (more reliable than
+      // addresses)
+      var distanceResult = googleMapsService.calculateDistanceMatrix(
+          startLat, startLng, endLat, endLng, mode);
 
-      var response = new java.util.HashMap<String, Object>();
-      response.put("distanceKm", Math.round(distance * 100.0) / 100.0);
-      response.put("distanceMeters", Math.round(distance * 1000.0));
-      response.put("fromCoordinates", new double[] { startLat, startLng });
-      response.put("toCoordinates", new double[] { endLat, endLng });
+      if (distanceResult == null) {
+        return ResponseEntity.internalServerError().body("Failed to calculate distance using Google Maps API");
+      }
 
-      log.info("[MCP Tool] Distance calculated: {} km", distance);
+      var response = new HashMap<String, Object>();
+      response.put("distanceKm", distanceResult.getDistanceKm());
+      response.put("distanceMeters", distanceResult.getDistanceMeters());
+      response.put("distanceText", distanceResult.getDistanceText());
+      response.put("durationMinutes", distanceResult.getDurationMinutes());
+      response.put("durationSeconds", distanceResult.getDurationSeconds());
+      response.put("durationText", distanceResult.getDurationText());
+      response.put("travelMode", distanceResult.getTravelMode());
+      response.put("originAddress", originAddress);
+      response.put("destinationAddress", destinationAddress);
+      if (startLat != null && startLng != null) {
+        response.put("fromCoordinates", new double[] { startLat, startLng });
+      }
+      if (endLat != null && endLng != null) {
+        response.put("toCoordinates", new double[] { endLat, endLng });
+      }
+
+      log.info("[MCP Tool] Distance calculated: {} km, {} minutes ({})",
+          distanceResult.getDistanceKm(), distanceResult.getDurationMinutes(), distanceResult.getTravelMode());
       return ResponseEntity.ok(response);
 
     } catch (Exception e) {
@@ -270,26 +299,49 @@ public class McpToolController {
   }
 
   /**
-   * Calculate distance between two points using Haversine formula
+   * Build a full address string from RoomDTO fields
    * 
-   * @param lat1 Latitude of first point
-   * @param lon1 Longitude of first point
-   * @param lat2 Latitude of second point
-   * @param lon2 Longitude of second point
-   * @return Distance in kilometers
+   * @param room The room DTO with address components
+   * @return Full address string in Vietnamese format
    */
-  private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
-    final int EARTH_RADIUS_KM = 6371;
+  private String buildFullAddress(RoomDTO room) {
+    StringBuilder address = new StringBuilder();
 
-    double dLat = Math.toRadians(lat2 - lat1);
-    double dLon = Math.toRadians(lon2 - lon1);
+    // Use location field first (it's usually the most complete)
+    if (room.getLocation() != null && !room.getLocation().isEmpty()) {
+      return room.getLocation();
+    }
 
-    double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    // Otherwise, build from components: addressDetails, street, ward, district,
+    // city
+    if (room.getAddressDetails() != null && !room.getAddressDetails().isEmpty()) {
+      address.append(room.getAddressDetails());
+    }
 
-    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (room.getStreet() != null && !room.getStreet().isEmpty()) {
+      if (address.length() > 0)
+        address.append(", ");
+      address.append(room.getStreet());
+    }
 
-    return EARTH_RADIUS_KM * c;
+    if (room.getWard() != null && !room.getWard().isEmpty()) {
+      if (address.length() > 0)
+        address.append(", ");
+      address.append(room.getWard());
+    }
+
+    if (room.getDistrict() != null && !room.getDistrict().isEmpty()) {
+      if (address.length() > 0)
+        address.append(", ");
+      address.append(room.getDistrict());
+    }
+
+    if (room.getCity() != null && !room.getCity().isEmpty()) {
+      if (address.length() > 0)
+        address.append(", ");
+      address.append(room.getCity());
+    }
+
+    return address.toString();
   }
 }
