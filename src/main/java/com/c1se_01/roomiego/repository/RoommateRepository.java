@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface RoommateRepository extends JpaRepository<Roommate, Long> {
     List<Roommate> findAllByGender(String gender);
     Optional<Roommate> findByUser(User user);
+    List<Roommate> findAllByUser(User user);
 }
