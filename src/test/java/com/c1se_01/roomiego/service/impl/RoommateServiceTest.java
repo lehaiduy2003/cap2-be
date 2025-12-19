@@ -126,8 +126,11 @@ class RoommateServiceTest {
   }
 
   // Tests for createRoommate method
+
   @Test
-  void createRoommate_SuccessfulCreation() {
+  void createRoommate_NoExistingRecord_CreatesNewRoommate() {
+    // No existing roommate for this user
+    when(roommateRepository.findAllByUser(currentUser)).thenReturn(new ArrayList<>());
     when(roommateRepository.save(any(Roommate.class))).thenReturn(roommate);
 
     RoommateResponseDTO result = roommateService.createRoommate(roommateDTO);
@@ -145,11 +148,95 @@ class RoommateServiceTest {
     assertEquals("123456789", result.getPhone());
     assertEquals(1L, result.getUserId());
 
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
     verify(roommateRepository, times(1)).save(any(Roommate.class));
+    verify(roommateRepository, never()).delete(any(Roommate.class));
   }
 
   @Test
-  void createRoommate_SaveFails() {
+  void createRoommate_OneExistingRecord_UpdatesExistingRoommate() {
+    // One existing roommate for this user
+    Roommate existingRoommate = new Roommate();
+    existingRoommate.setId(1L);
+    existingRoommate.setUser(currentUser);
+    existingRoommate.setHometown("Old Hometown");
+
+    when(roommateRepository.findAllByUser(currentUser)).thenReturn(Arrays.asList(existingRoommate));
+    when(roommateRepository.save(any(Roommate.class))).thenReturn(roommate);
+
+    RoommateResponseDTO result = roommateService.createRoommate(roommateDTO);
+
+    assertNotNull(result);
+    assertEquals("Hanoi", result.getHometown()); // Updated value
+
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
+    verify(roommateRepository, times(1)).save(any(Roommate.class));
+    verify(roommateRepository, never()).delete(any(Roommate.class));
+  }
+
+  @Test
+  void createRoommate_MultipleDuplicateRecords_KeepsNewestAndDeletesOthers() {
+    // Multiple duplicate roommates for this user
+    Roommate oldRoommate1 = new Roommate();
+    oldRoommate1.setId(1L);
+    oldRoommate1.setUser(currentUser);
+    oldRoommate1.setHometown("Old Hometown 1");
+
+    Roommate oldRoommate2 = new Roommate();
+    oldRoommate2.setId(2L);
+    oldRoommate2.setUser(currentUser);
+    oldRoommate2.setHometown("Old Hometown 2");
+
+    Roommate newestRoommate = new Roommate();
+    newestRoommate.setId(3L);
+    newestRoommate.setUser(currentUser);
+    newestRoommate.setHometown("Newest Hometown");
+
+    // Return in random order - service should sort by ID descending
+    when(roommateRepository.findAllByUser(currentUser))
+        .thenReturn(Arrays.asList(oldRoommate1, newestRoommate, oldRoommate2));
+    when(roommateRepository.save(any(Roommate.class))).thenReturn(roommate);
+
+    RoommateResponseDTO result = roommateService.createRoommate(roommateDTO);
+
+    assertNotNull(result);
+
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
+    verify(roommateRepository, times(1)).save(any(Roommate.class));
+    // Should delete 2 old records (ID 1 and 2), keep newest (ID 3)
+    verify(roommateRepository, times(2)).delete(any(Roommate.class));
+  }
+
+  @Test
+  void createRoommate_TwoDuplicateRecords_KeepsNewestAndDeletesOlder() {
+    // Two duplicate roommates for this user
+    Roommate olderRoommate = new Roommate();
+    olderRoommate.setId(1L);
+    olderRoommate.setUser(currentUser);
+    olderRoommate.setHometown("Older Hometown");
+
+    Roommate newerRoommate = new Roommate();
+    newerRoommate.setId(2L);
+    newerRoommate.setUser(currentUser);
+    newerRoommate.setHometown("Newer Hometown");
+
+    when(roommateRepository.findAllByUser(currentUser))
+        .thenReturn(Arrays.asList(olderRoommate, newerRoommate));
+    when(roommateRepository.save(any(Roommate.class))).thenReturn(roommate);
+
+    RoommateResponseDTO result = roommateService.createRoommate(roommateDTO);
+
+    assertNotNull(result);
+
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
+    verify(roommateRepository, times(1)).save(any(Roommate.class));
+    // Should delete 1 old record (ID 1), keep newer (ID 2)
+    verify(roommateRepository, times(1)).delete(olderRoommate);
+  }
+
+  @Test
+  void createRoommate_SaveFails_ThrowsRuntimeException() {
+    when(roommateRepository.findAllByUser(currentUser)).thenReturn(new ArrayList<>());
     when(roommateRepository.save(any(Roommate.class))).thenThrow(new RuntimeException("Database error"));
 
     RuntimeException exception = assertThrows(RuntimeException.class, () -> {
@@ -157,7 +244,47 @@ class RoommateServiceTest {
     });
 
     assertEquals("Database error", exception.getMessage());
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
     verify(roommateRepository, times(1)).save(any(Roommate.class));
+  }
+
+  @Test
+  void createRoommate_UpdateExistingRecord_PreservesId() {
+    // Existing roommate with specific ID
+    Roommate existingRoommate = new Roommate();
+    existingRoommate.setId(99L);
+    existingRoommate.setUser(currentUser);
+    existingRoommate.setHometown("Old Hometown");
+
+    Roommate savedRoommate = new Roommate();
+    savedRoommate.setId(99L); // Same ID preserved
+    savedRoommate.setUser(currentUser);
+    savedRoommate.setGender("MALE");
+    savedRoommate.setHometown("Hanoi");
+    savedRoommate.setCity("Hanoi");
+    savedRoommate.setDistrict("Hoan Kiem");
+    savedRoommate.setRateImage(8);
+    savedRoommate.setYob(1995);
+    savedRoommate.setJob("Engineer");
+    savedRoommate.setHobbies("Reading");
+    savedRoommate.setMore("Friendly person");
+    savedRoommate.setPhone("123456789");
+
+    when(roommateRepository.findAllByUser(currentUser)).thenReturn(Arrays.asList(existingRoommate));
+    when(roommateRepository.save(any(Roommate.class))).thenReturn(savedRoommate);
+
+    RoommateResponseDTO result = roommateService.createRoommate(roommateDTO);
+
+    assertNotNull(result);
+    // Verify the response contains updated data
+    assertEquals("Hanoi", result.getHometown());
+    assertEquals(1L, result.getUserId()); // UserId is the User's ID, not Roommate's ID
+
+    verify(roommateRepository, times(1)).findAllByUser(currentUser);
+    // Verify save was called with the existing roommate (ID 99), not a new one
+    verify(roommateRepository, times(1)).save(argThat(roommate -> 
+        roommate.getId() != null && roommate.getId().equals(99L)
+    ));
   }
 
   // Tests for getAllRoommates method
