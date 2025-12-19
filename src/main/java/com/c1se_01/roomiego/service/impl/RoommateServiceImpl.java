@@ -44,8 +44,42 @@ public class RoommateServiceImpl implements RoommateService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User currentUser = (User) authentication.getPrincipal();
 
-        // Create roommate entity
-        Roommate roommate = new Roommate();
+        // Find all existing roommate records for this user
+        List<Roommate> existingRoommates = roommateRepository.findAllByUser(currentUser);
+        
+        Roommate roommate;
+        
+        if (existingRoommates.isEmpty()) {
+            // No existing record, create new
+            roommate = new Roommate();
+            log.info("Creating new roommate for user: {}", currentUser.getId());
+        } else {
+            // Has existing records
+            if (existingRoommates.size() > 1) {
+                // Multiple records found - keep the most recent one, delete others
+                log.warn("Found {} duplicate roommate records for user: {}", 
+                        existingRoommates.size(), currentUser.getId());
+                
+                // Sort by ID descending to get the most recent (assuming ID is auto-increment)
+                existingRoommates.sort((r1, r2) -> Long.compare(r2.getId(), r1.getId()));
+                
+                // Keep the first one (most recent)
+                roommate = existingRoommates.get(0);
+                
+                // Delete all others
+                for (int i = 1; i < existingRoommates.size(); i++) {
+                    Roommate duplicateRoommate = existingRoommates.get(i);
+                    log.info("Deleting duplicate roommate record with ID: {}", duplicateRoommate.getId());
+                    roommateRepository.delete(duplicateRoommate);
+                }
+            } else {
+                // Only one record, update it
+                roommate = existingRoommates.get(0);
+                log.info("Updating existing roommate for user: {}", currentUser.getId());
+            }
+        }
+
+        // Update roommate entity (works for both create and update)
         roommate.setGender(String.valueOf(currentUser.getGender()));
         roommate.setHometown(dto.getHometown());
         roommate.setCity(dto.getCity());
@@ -60,6 +94,7 @@ public class RoommateServiceImpl implements RoommateService {
 
         // Save and map to response
         Roommate savedRoommate = roommateRepository.save(roommate);
+        log.info("Successfully saved roommate with ID: {}", savedRoommate.getId());
         return mapToResponseDTO(savedRoommate);
     }
 
