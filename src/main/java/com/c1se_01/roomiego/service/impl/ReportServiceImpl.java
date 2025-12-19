@@ -8,9 +8,7 @@ import com.c1se_01.roomiego.dto.NotificationDto;
 import com.c1se_01.roomiego.dto.ReportRequest;
 import com.c1se_01.roomiego.dto.ReportResponse;
 import com.c1se_01.roomiego.enums.NotificationType;
-import com.c1se_01.roomiego.enums.RentRequestStatus;
 import com.c1se_01.roomiego.enums.Role;
-import com.c1se_01.roomiego.mapper.RentRequestMapper;
 import com.c1se_01.roomiego.model.Report;
 import com.c1se_01.roomiego.mapper.ReportMapper;
 import com.c1se_01.roomiego.model.Room;
@@ -20,7 +18,6 @@ import com.c1se_01.roomiego.repository.RoomRepository;
 import com.c1se_01.roomiego.repository.UserRepository;
 import com.c1se_01.roomiego.service.NotificationService;
 import com.c1se_01.roomiego.service.ReportService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -63,17 +60,19 @@ public class ReportServiceImpl implements ReportService {
         reportRepository.save(report);
 
         // Gửi thông báo WebSocket cho tenant
-        User user = userRepository.findByRole(Role.ADMIN).orElse(null);
+        List<User> admins = userRepository.findByRole(Role.ADMIN);
 
-        NotificationDto notificationDto = new NotificationDto();
-        notificationDto.setUserId(user.getId());
-        notificationDto.setMessage("Bạn có bài báo cáo phòng từ: " + reporter.getFullName());
-        notificationDto.setType(NotificationType.BREACH);
+        for (User admin : admins) {
+            NotificationDto notificationDto = new NotificationDto();
+            notificationDto.setUserId(admin.getId());
+            notificationDto.setMessage("Có báo cáo mới về bài đăng: " + room.getTitle());
+            notificationDto.setType(NotificationType.BREACH);
 
-        // Save the notification to the database
-        notificationService.saveNotification(notificationDto);
+            messagingTemplate.convertAndSend("/topic/notifications/" + admin.getId(), notificationDto);
 
-        messagingTemplate.convertAndSend("/topic/notifications/" + user.getId(), notificationDto);
+            // Lưu thông báo vào cơ sở dữ liệu
+            notificationService.saveNotification(notificationDto);
+        }
     }
 
     @Override

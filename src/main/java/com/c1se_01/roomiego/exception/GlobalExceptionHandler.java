@@ -21,9 +21,9 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(403, ex.getMessage(), null));
     }
 
-    // @ExceptionHandler(Exception.class)
-    // public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
-    //     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-    //             .body(new ApiResponse<>(500, ex.getMessage(), null));
-    // }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(500, ex.getMessage(), null));
+    }
 }

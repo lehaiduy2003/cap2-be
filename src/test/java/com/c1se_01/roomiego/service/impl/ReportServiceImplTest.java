@@ -122,7 +122,7 @@ class ReportServiceImplTest {
       mockedStatic.when(SecurityContextHolder::getContext).thenReturn(securityContext);
 
       when(roomRepository.findById(1L)).thenReturn(Optional.of(room));
-      when(userRepository.findByRole(Role.ADMIN)).thenReturn(Optional.of(admin));
+      when(userRepository.findByRole(Role.ADMIN)).thenReturn(List.of(admin));
       when(reportRepository.save(any(Report.class))).thenReturn(report);
 
       reportService.reportRoom(reportRequest);
