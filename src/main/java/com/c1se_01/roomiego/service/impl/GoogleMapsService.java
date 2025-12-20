@@ -24,6 +24,7 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -52,7 +53,7 @@ public class GoogleMapsService {
         filter.setSize(1000);
         List<RoomDTO> rooms = this.roomService.getAllRooms(filter);
 
-        if(rooms.isEmpty()) {
+        if (rooms.isEmpty()) {
             for (LocationMarkerRequest request : requests) {
                 try {
                     LocationResponse.LocationData locationData = geocodeAddress(request.getAddress());
@@ -61,7 +62,9 @@ public class GoogleMapsService {
                                 Long.valueOf(request.getId()),
                                 locationData.getFormattedAddress(),
                                 locationData.getLongitude(),
-                                locationData.getLatitude());
+                                locationData.getLatitude(),
+                                Optional.empty(),
+                                false);
                         responses.add(response);
                     } else {
                         log.warn("No location data found for address: {}", request.getAddress());
@@ -79,7 +82,9 @@ public class GoogleMapsService {
                     room.getId(),
                     room.getAddressDetails(),
                     room.getLongitude(),
-                    room.getLatitude());
+                    room.getLatitude(),
+                    Optional.of(room),
+                    true);
             responses.add(response);
         }
 
