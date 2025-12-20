@@ -4,10 +4,14 @@ import com.c1se_01.roomiego.dto.DistanceMatrixResult;
 import com.c1se_01.roomiego.dto.LocationMarkerRequest;
 import com.c1se_01.roomiego.dto.LocationMarkerResponse;
 import com.c1se_01.roomiego.dto.LocationResponse;
+import com.c1se_01.roomiego.dto.RoomDTO;
+import com.c1se_01.roomiego.dto.common.FilterParam;
+import com.c1se_01.roomiego.service.RoomService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -28,45 +32,55 @@ public class GoogleMapsService {
     @Value("${google.maps.api.key}")
     private String googleMapsApiKey;
 
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private RestTemplate restTemplate = new RestTemplate();
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private final RoomService roomService;
 
     private static final String GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
     private static final String NEARBY_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
     private static final String DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json";
     private static final int RADIUS_METERS = 500; // 500m
 
-    public GoogleMapsService() {
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
-    }
-
-    // Constructor for testing
-    public GoogleMapsService(RestTemplate restTemplate, ObjectMapper objectMapper) {
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+    public GoogleMapsService(@Lazy RoomService roomService) {
+        this.roomService = roomService;
     }
 
     public LocationMarkerResponse[] getMarkers(List<LocationMarkerRequest> requests) {
         List<LocationMarkerResponse> responses = new ArrayList<>();
+        FilterParam filter = new FilterParam();
+        filter.setPage(0);
+        filter.setSize(1000);
+        List<RoomDTO> rooms = this.roomService.getAllRooms(filter);
 
-        for (LocationMarkerRequest request : requests) {
-            try {
-                LocationResponse.LocationData locationData = geocodeAddress(request.getAddress());
-                if (locationData != null) {
-                    LocationMarkerResponse response = new LocationMarkerResponse(
-                            request.getId(),
-                            locationData.getFormattedAddress(),
-                            locationData.getLongitude(),
-                            locationData.getLatitude());
-                    responses.add(response);
-                } else {
-                    log.warn("No location data found for address: {}", request.getAddress());
+        if(rooms.isEmpty()) {
+            for (LocationMarkerRequest request : requests) {
+                try {
+                    LocationResponse.LocationData locationData = geocodeAddress(request.getAddress());
+                    if (locationData != null) {
+                        LocationMarkerResponse response = new LocationMarkerResponse(
+                                Long.valueOf(request.getId()),
+                                locationData.getFormattedAddress(),
+                                locationData.getLongitude(),
+                                locationData.getLatitude());
+                        responses.add(response);
+                    } else {
+                        log.warn("No location data found for address: {}", request.getAddress());
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing marker request for address {}: {}", request.getAddress(),
+                            e.getMessage(),
+                            e);
                 }
-            } catch (Exception e) {
-                log.error("Error processing marker request for address {}: {}", request.getAddress(), e.getMessage(),
-                        e);
             }
+        }
+
+        for (RoomDTO room : rooms) {
+            LocationMarkerResponse response = new LocationMarkerResponse(
+                    room.getId(),
+                    room.getAddressDetails(),
+                    room.getLongitude(),
+                    room.getLatitude());
+            responses.add(response);
         }
 
         return responses.toArray(new LocationMarkerResponse[0]);

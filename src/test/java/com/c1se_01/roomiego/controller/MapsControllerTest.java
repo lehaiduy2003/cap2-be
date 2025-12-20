@@ -129,7 +129,7 @@ public class MapsControllerTest {
         requests[0] = new LocationMarkerRequest("123 Main St", 1);
 
         LocationMarkerResponse[] mockResponses = new LocationMarkerResponse[1];
-        mockResponses[0] = new LocationMarkerResponse(1, "123 Main St", -74.0060, 40.7128);
+        mockResponses[0] = new LocationMarkerResponse(1L, "123 Main St", -74.0060, 40.7128);
 
         when(googleMapsService.getMarkers(anyList())).thenReturn(mockResponses);
 

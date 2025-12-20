@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 public class LocationMarkerResponse {
-    Integer id;
+    Long id;
     String address;
     Double longitude;
     Double latitude;
